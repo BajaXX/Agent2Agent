@@ -21,6 +21,7 @@ const INLINE_CONTENT_LIMIT = 512 * 1024; // sync 内联 content 上限
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_FILE_BYTES, files: 100 },
+  preservePath: true, // 保留 multipart 文件名中的相对路径（支持 doc 目录子目录结构同步）
 });
 
 const TEXT_EXT = new Set(['md', 'txt', 'json', 'js', 'mjs', 'cjs', 'ts', 'py', 'yaml', 'yml', 'html', 'css', 'xml', 'csv', 'log', 'ini', 'conf', 'sh', 'sql', 'java', 'go', 'rb', 'c', 'cpp', 'h', 'toml', 'env', 'diff', 'patch']);
