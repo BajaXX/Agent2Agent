@@ -2,18 +2,13 @@
 
 `agent2agent-cli` 通过 **GitHub Actions + npm Trusted Publishing（OIDC）** 自动发布：推送到 GitHub 时打一个 `v*` tag，Actions 自动把包发布到 npm，**全程无需 token**（比 bypass-2FA 的 token 更安全，npm 官方推荐）。
 
-## 第一次配置（只需一次）
+## 第一次配置（已完成 ✅）
 
-### 1. 先发布首个版本（建立包后才能在 npm 网站配置 Trusted Publishing）
-
-在仓库 `cli/` 目录执行（需要 npm 账号的一次性认证，可用 granular token 或 2FA 验证码）：
-
-```bash
-cd cli
-npm publish
-```
-
-> 若提示 2FA：账号设置里生成 **Granular Access Token**（勾选 bypass 2FA，仅首次用），或发布时提供 2FA 验证码（`npm publish --otp=123456`）。
+> `agent2agent-cli@0.2.0` 已发布到 npm registry，Trusted Publishing 已关联 GitHub 仓库。
+> 若将来在其它账号/环境重新初始化，参考以下步骤：
+>
+> 1. 在仓库 `cli/` 目录执行 `npm publish`（首次需 npm 账号认证，2FA 时提供验证码 `npm publish --otp=<验证码>`）。
+> 2. 在 npm 网站包 Settings 中配置 Trusted Publishing（见下文）。
 
 ### 2. 在 npm 网站配置 Trusted Publishing
 

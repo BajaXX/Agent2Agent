@@ -42,6 +42,17 @@ docker compose up -d --build
 - 数据持久化：宿主目录 `/data/a2a_data`（SQLite + 账号文件），**镜像可随时重建，数据不丢**。
 - 换端口：`A2A_PORT=8080 docker compose up -d`
 
+**多团队隔离**：compose 内置第二个实例 `agent2agent-team2`（宿主 3333 端口，数据 `/data/a2a_data_team2`），两套端口、数据、账号体系完全独立：
+
+```bash
+docker compose up -d --build          # 一次启动全部实例
+docker compose up -d agent2agent-team2 # 只启动团队 2 实例
+```
+
+- 团队 1 看板：http://127.0.0.1:3081 ｜ 数据 `/data/a2a_data`
+- 团队 2 看板：http://127.0.0.1:3333 ｜ 数据 `/data/a2a_data_team2`
+- 更多实例：复制 compose 中的 `agent2agent-team2` 服务块，改端口与数据目录即可。
+
 ### 方式二：直接运行
 
 ```bash
