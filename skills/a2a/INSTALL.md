@@ -43,24 +43,27 @@ node cli/a2a.js help
 
 **方式 B：全局安装（推荐，所有项目都能直接用 `a2a` 命令）**
 
-⚠️ **先读这个坑（很多人在这里翻车）**：`a2a-cli` 是**包名**（出现在 `npm ls -g` 里），**命令名是 `a2a`**。另外，**`npm install -g ./cli`（指向目录）创建的是"符号链接"**——它只是指向你安装时那个目录，如果源目录被移动或删除（比如放在 `/tmp`、`/private/tmp`、桌面临时文件夹，或由 AI 临时 clone 的目录被清理），`a2a` 命令会立刻失效，报"找不到命令"。请勿从临时目录安装。下面三种方式选一种（① 最稳，② 最省事，③ 仅限仓库在稳定位置时）：
+⚠️ **先读这个坑（很多人在这里翻车）**：`agent2agent-cli`（或 `a2a-cli`）是**包名**（出现在 `npm ls -g` 里），**命令名是 `a2a`**。另外，**「指向目录/ git URL 的安装」可能被 npm 建成"符号链接"**——它只是指向源位置，源目录一旦被移动或删除（如 macOS `/private/tmp` 被清理、npm 缓存临时 clone 被回收），`a2a` 命令立即失效。请勿依赖临时目录。下面按可靠性排序：
 
-**方式 ①：打包安装（最稳，真实拷贝，不依赖源目录）**
+**方式 ①：从 npm registry 安装（最推荐，一行搞定）**
+
+```bash
+npm install -g agent2agent-cli
+```
+
+- 装好后任何目录直接执行 `a2a`。
+- 偶尔用 / 不想全局装：`npx --yes agent2agent-cli help`（npx 方式，每次临时拉取）。
+- 卸载：`npm uninstall -g agent2agent-cli`。
+- 若包尚未发布到 registry：用下面方式 ②。
+
+**方式 ②：打包安装（真实拷贝，不依赖源目录）**
 
 ```bash
 cd <Agent2Agent仓库路径>          # 仓库放到稳定位置，如 ~/dev/Agent2Agent
-npm pack ./cli                     # 生成 a2a-cli-0.2.0.tgz
-npm install -g ./a2a-cli-0.2.0.tgz
-rm ./a2a-cli-0.2.0.tgz             # 删掉没关系，装进去的是拷贝
+npm pack ./cli                     # 生成 agent2agent-cli-0.2.0.tgz
+npm install -g ./agent2agent-cli-0.2.0.tgz
+rm ./agent2agent-cli-0.2.0.tgz     # 删掉没关系，装进去的是拷贝
 ```
-
-**方式 ②：直接从 GitHub 安装（最省事）**
-
-```bash
-npm install -g git@github.com:BajaXX/Agent2Agent.git
-```
-
-> 注：该方式会一并安装 server 的依赖（better-sqlite3 等），首次较慢（约 1~3 分钟），但装完即真实拷贝、稳定可用。
 
 **方式 ③：目录安装（不推荐，仅当仓库固定在稳定路径时）**
 
@@ -69,21 +72,21 @@ cd <Agent2Agent仓库路径>           # 必须是稳定位置（如 ~/dev/Agent
 npm install -g ./cli
 ```
 
-> ⚠️ 这是**符号链接**：源目录一旦删除/移动/被清理，`a2a` 就失效。你的 AI 助手可能会把仓库 clone 到临时目录（如 macOS 的 `/private/tmp`）再安装——那样装完即废。务必先 `git clone git@github.com:BajaXX/Agent2Agent.git ~/dev/Agent2Agent` 再安装。
+> ⚠️ 这是**符号链接**：源目录一旦删除/移动/被清理，`a2a` 就失效。你的 AI 助手可能会把仓库 clone 到临时目录（如 macOS 的 `/private/tmp`）再安装——那样装完即废。
+
+**不要这样做**（实测会失效）：`npm install -g git@github.com:BajaXX/Agent2Agent.git` —— 部分 npm 版本会把它建成指向 `~/.npm/_cacache/tmp/git-cloneXXX` 的符号链接，缓存临时目录被回收后命令即失效。
 
 **安装后验证（必做）：**
 
 ```bash
 which a2a && a2a help          # 应显示命令路径 + 命令列表
-npm ls -g --depth=0            # 应看到 a2a-cli
+npm ls -g --depth=0            # 应看到 agent2agent-cli
 ```
 
 如果 `which a2a` 找不到：
 - 用 nvm 管理 Node 的话，检查 nvm 的 bin 目录是否在 PATH：`echo $PATH` 应包含 `~/.nvm/versions/node/vX/bin`；或 `ls ~/.nvm/versions/node/*/bin/a2a` 确认文件存在。
 - 检查全局 bin 目录：`npm bin -g`，把该目录加入 PATH。
-- 如果之前装过但坏了（符号链接失效）：先 `npm uninstall -g a2a-cli`，再按方式 ① 或 ② 重装。
-
-> 卸载：`npm uninstall -g a2a-cli`（或方式 ② 装的用 `npm uninstall -g agent2agent`）。
+- 如果之前装过但坏了（符号链接失效）：先 `npm uninstall -g agent2agent-cli`（git-url 装的用 `npm uninstall -g agent2agent`），再按方式 ① 或 ② 重装。
 
 **方式 C：使用 IDE 插件（VSCode / Cursor / Windsurf 等，零命令行操作）**
 
@@ -231,7 +234,7 @@ EOF
 
 ## §11 常见问题
 
-- **`a2a: command not found`**：说明 a2a 尚未全局安装。优先 `npm install -g git@github.com:BajaXX/Agent2Agent.git` 或打包安装 `npm pack ./cli && npm install -g ./a2a-cli-*.tgz`（勿用目录安装，避免符号链接失效）；或使用 IDE 插件（方式 C）。
+- **`a2a: command not found`**：说明 a2a 尚未全局安装。执行 `npm install -g agent2agent-cli`（registry 已发布后）或打包安装 `npm pack ./cli && npm install -g ./agent2agent-cli-*.tgz`；勿用目录/git-url 安装（符号链接会失效）；或使用 IDE 插件（方式 C）。
 - **尚未注册账号**：先 `a2a init`（交互式向导，会询问平台地址、账号名、文档同步目录等）。
 - **文档同步目录想用项目里任意目录**：`a2a init --doc-dir docs`（或交互时输入 `docs/`）；已注册项目改 `.a2a.json` 的 `docDir` 字段即可。
 - **hook 不生效**：确认 settings.json 中 command 路径正确、脚本有执行权限（`chmod +x`）。

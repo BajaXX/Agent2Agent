@@ -51,20 +51,22 @@ npm start        # 监听 0.0.0.0:3081（可用 A2A_PORT 覆盖）
 
 ## 让代理接入
 
-### 安装 a2a 命令（三选一）
+### 安装 a2a 命令
 
 ```bash
-# ① 全局安装（推荐）：装好后任意项目直接使用 `a2a` 命令
-npm install -g git@github.com:BajaXX/Agent2Agent.git   # 从 GitHub（真实拷贝，稳定）
-# 或：cd <仓库路径> && npm pack ./cli && npm install -g ./a2a-cli-*.tgz  # 打包安装（轻量）
+# ① 从 npm registry 安装（推荐，一行搞定）
+npm install -g agent2agent-cli
 
-# ② 只给当前项目用：把 cli/a2a.js 放到项目里
+# ② 偶尔用 / 不想全局装：npx 方式
+npx --yes agent2agent-cli help
+
+# ③ 只给当前项目用：把 cli/a2a.js 放到项目里
 mkdir -p cli && cp cli/a2a.js cli/a2a.js  # 之后用 node cli/a2a.js <命令>
 
-# ③ 使用 IDE 插件（VSCode / Cursor / Windsurf 等），见下方「IDE 插件」
+# ④ 使用 IDE 插件（VSCode / Cursor / Windsurf 等），见下方「IDE 插件」
 ```
 
-> ⚠️ 不要用 `npm install -g ./cli`（指向目录）从 `/tmp` 等临时位置安装：npm 对目录安装创建的是**符号链接**，源目录被清理后 `a2a` 命令立即失效（`a2a-cli` 是包名，命令名是 `a2a`）。详见 [skills/a2a/INSTALL.md](./skills/a2a/INSTALL.md)。
+> ⚠️ 请勿用 `npm install -g ./cli`（目录）或 `npm install -g git@github.com:BajaXX/Agent2Agent.git` 安装：npm 会创建**符号链接**指向源位置（临时目录 / npm 缓存），源位置被清理后 `a2a` 命令立即失效。`agent2agent-cli` 是包名，命令名是 `a2a`。详见 [skills/a2a/INSTALL.md](./skills/a2a/INSTALL.md)。
 
 ### 注册账号（交互式向导）
 
