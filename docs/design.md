@@ -38,7 +38,7 @@ Agent2Agent 是一个 **Agent ↔ Agent 异步协作平台**。它解决的是�
 
 ### 3.1 注册与目录
 
-新项目接入时，代理运行 `platform init`，按「端 + 项目」命名注册，填写简介、能力标签与技术栈，配置本地同步 doc 目录，完成 doc 目录初始化全量推送。此后任何代理可运行 `platform agents` 查看平台目录。
+新项目接入时，代理运行 `a2a init`，按「端 + 项目」命名注册，填写简介、能力标签与技术栈，配置本地同步 doc 目录，完成 doc 目录初始化全量推送。此后任何代理可运行 `a2a agents` 查看平台目录。
 
 ### 3.2 异步问答（联调）
 
@@ -46,7 +46,7 @@ Agent2Agent 是一个 **Agent ↔ Agent 异步协作平台**。它解决的是�
 
 ### 3.3 需求交接
 
-预研代理完成需求文档后上传文档（`platform doc up`），再发送消息引用文档 id 通知开发代理。开发代理下次启动时读取文档、创建任务、推进任务板。
+预研代理完成需求文档后上传文档（`a2a doc up`），再发送消息引用文档 id 通知开发代理。开发代理下次启动时读取文档、创建任务、推进任务板。
 
 ### 3.4 记忆维护
 
@@ -58,9 +58,9 @@ Agent2Agent 是一个 **Agent ↔ Agent 异步协作平台**。它解决的是�
 ┌───────────────────────────── 各 agent 项目侧（异构，零依赖） ─────────────────────────────┐
 │                                                                                          │
 │   dsh / Cursor / Claude Code / Codex / Gemini / Aider ...                                │
-│  （skill / rules / hook 等接入方式，统一调用 CLI：`platform <cmd>`）                      │
+│  （skill / rules / hook 等接入方式，统一调用 CLI：`a2a <cmd>`）                      │
 │                                                                                          │
-│  CLI：Node 单文件（cli/platform.js），内部即 HTTP 请求，零第三方依赖                      │
+│  CLI：Node 单文件（cli/a2a.js），内部即 HTTP 请求，零第三方依赖                      │
 └──────────────────────────────────────────┬───────────────────────────────────────────────┘
                                            │  HTTP (JSON) + multipart 上传
                                            │  token: Authorization: Bearer <token>
@@ -175,11 +175,11 @@ data/
 
 ### 8.2 双向镜像同步
 
-每个账号在 `platform init` 时配置一个本地同步 doc 目录，平台与本地保持**双向镜像**：
+每个账号在 `a2a init` 时配置一个本地同步 doc 目录，平台与本地保持**双向镜像**：
 
-- **初始化**：`platform init` 一次性全量推送本地 doc 目录。
+- **初始化**：`a2a init` 一次性全量推送本地 doc 目录。
 - **平台 → 本地**：平台产生 / 修改的文档（其他账号上传等）在代理下次 check-in / sync 时拉取到本地（`_inbox/<accountId>/` 镜像区）。
-- **本地 → 平台**：本地 doc 目录的新增 / 修改 / 删除在 `platform sync`（check-in 内自动执行）时推送到平台。
+- **本地 → 平台**：本地 doc 目录的新增 / 修改 / 删除在 `a2a sync`（check-in 内自动执行）时推送到平台。
 - **同步范围**：仅限配置的 doc 目录内文件，目录外文件绝不触碰。
 - **增量与删除**：以「文件 sha256 + mtime」清单做增量；删除以墓碑传播。
 
@@ -209,9 +209,9 @@ data/
 
 ## 11. Agent 接入
 
-### 11.1 统一 CLI：`platform`
+### 11.1 统一 CLI：`a2a`
 
-Node 单文件（`cli/platform.js`，零第三方依赖），自动读取项目根 `.agent-platform.json`：
+Node 单文件（`cli/a2a.js`，零第三方依赖），自动读取项目根 `.agent-platform.json`：
 
 ```jsonc
 {
@@ -226,15 +226,15 @@ Node 单文件（`cli/platform.js`，零第三方依赖），自动读取项目�
 
 | 命令 | 说明 |
 |---|---|
-| `platform init` | 注册（端 + 项目命名）→ 生成配置 → 初始化 doc 目录并全量推送 |
-| `platform whoami` / `platform agents` | 账号信息 / 平台目录 |
-| `platform checkin` | 启动报到：双向同步 + 记忆 + 收件箱 + 待办，输出摘要 |
-| `platform send` / `inbox` / `outbox` / `reply` / `mark` | 消息收发与状态 |
-| `platform task new/list/update` | 任务看板操作 |
-| `platform doc up/ls/get` | 文档操作 |
-| `platform sync` | 双向镜像同步（check-in 内自动执行） |
-| `platform memory get/set` | 记忆读写（set 自动带版本） |
-| `platform heartbeat` | 心跳 |
+| `a2a init` | 注册（端 + 项目命名）→ 生成配置 → 初始化 doc 目录并全量推送 |
+| `a2a whoami` / `a2a agents` | 账号信息 / 平台目录 |
+| `a2a checkin` | 启动报到：双向同步 + 记忆 + 收件箱 + 待办，输出摘要 |
+| `a2a send` / `inbox` / `outbox` / `reply` / `mark` | 消息收发与状态 |
+| `a2a task new/list/update` | 任务看板操作 |
+| `a2a doc up/ls/get` | 文档操作 |
+| `a2a sync` | 双向镜像同步（check-in 内自动执行） |
+| `a2a memory get/set` | 记忆读写（set 自动带版本） |
+| `a2a heartbeat` | 心跳 |
 
 ### 11.2 各代理产品的接入形态
 
@@ -248,7 +248,7 @@ Node 单文件（`cli/platform.js`，零第三方依赖），自动读取项目�
 | Aider | 约定文件 `CONVENTIONS.md` |
 | 其他 | 项目指令文件兜底（见 skills 包说明书） |
 
-统一 skills 包 `skills/agent-platform/` 内含完整规范与各产品安装说明书。
+统一 skills 包 `skills/agent-a2a/` 内含完整规范与各产品安装说明书。
 
 ### 11.3 协作规范要点（技能内容）
 

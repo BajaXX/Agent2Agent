@@ -24,7 +24,7 @@ server/          # 平台服务端（Express + better-sqlite3 + 文件系统）
   src/sse.js     #   SSE 事件分发
   src/routes/    #   accounts / messages / tasks / documents / memory / summary / events
 web/             # 人类看板（纯静态 SPA，无构建链）
-cli/platform.js  # 统一 CLI（单文件、零第三方依赖）
+cli/a2a.js  # 统一 CLI（单文件、零第三方依赖）
 skills/          # 统一 skills 包（SKILL.md 规范 + 各产品安装说明书）
 docs/            # design.md（系统设计）+ api.md（API 契约）
 scripts/         # 冒烟测试

@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * Agent2Agent 统一 CLI —— `platform`
+ * Agent2Agent 统一 CLI —— `a2a`
  *
  * 零第三方依赖：仅使用 Node 内置模块（fs / path / crypto）。
  * HTTP 使用 Node >= 20 的全局 fetch；multipart 上传使用全局 FormData / Blob。
  *
  * 用法：
- *   node cli/platform.js <命令> [选项]
- *   （或 chmod +x 后直接 ./cli/platform.js）
+ *   node cli/a2a.js <命令> [选项]
+ *   （或 chmod +x 后直接 ./cli/a2a.js）
  *
  * 配置：项目根目录 .agent-platform.json（从当前目录逐级向上查找，或 --config 指定）
  * 状态：.agent-platform-state.json（与配置同目录，记录同步游标与本地 manifest）
@@ -230,7 +230,7 @@ function findConfigFile(startDir) {
 function requireConfig(configPath) {
   const file = configPath ? path.resolve(process.cwd(), configPath) : findConfigFile(process.cwd());
   if (!file) {
-    fail('未找到 .agent-platform.json（已从当前目录逐级向上查找）。请先运行 platform init 注册账号。');
+    fail('未找到 .agent-platform.json（已从当前目录逐级向上查找）。请先运行 a2a init 注册账号。');
   }
   if (!fs.existsSync(file)) fail(`配置文件不存在: ${file}`);
   let config;
@@ -514,20 +514,89 @@ async function doSync(config, configDir) {
  * 命令实现
  * ------------------------------------------------------------------------- */
 
+/** 交互式提问：依次向用户询问缺失的字段（仅 TTY 下启用） */
+function createLineReader() {
+  // 自研逐行读取：输入提前到达时缓存到队列，等待者按序消费（兼容人机/伪终端/管道）
+  let buffer = '';
+  const queue = [];
+  const waiters = [];
+  process.stdin.setEncoding('utf8');
+  process.stdin.resume();
+  process.stdin.on('data', (chunk) => {
+    buffer += chunk;
+    let i;
+    while ((i = buffer.indexOf('\n')) >= 0) {
+      const line = buffer.slice(0, i).replace(/\r$/, '');
+      buffer = buffer.slice(i + 1);
+      const w = waiters.shift();
+      if (w) w(line);
+      else queue.push(line);
+    }
+  });
+  return function nextLine() {
+    if (queue.length) return Promise.resolve(queue.shift());
+    return new Promise((resolve) => waiters.push(resolve));
+  };
+}
+
+async function promptInteractive(fields) {
+  const nextLine = createLineReader();
+  const answers = {};
+  for (const f of fields) {
+    const def = f.default;
+    let val = '';
+    for (let attempt = 0; attempt < 3; attempt++) {
+      process.stdout.write(f.prompt + (def !== undefined && def !== '' ? `（默认: ${def}）: ` : ': '));
+      const raw = (await nextLine()).trim();
+      val = raw || (def !== undefined ? def : '');
+      if (val || !f.required) break;
+      if (attempt < 2) process.stdout.write(paint(C.yellow, `「${f.key}」为必填项，请重新输入：\n`));
+    }
+    answers[f.key] = val;
+  }
+  return answers;
+}
+
 async function cmdInit(opts) {
-  const url = opts.url;
-  const name = opts.name;
-  const tool = opts.tool;
-  const project = opts.project;
+  let url = opts.url;
+  let name = opts.name;
+  let tool = opts.tool;
+  let project = opts.project;
+  let description = opts.description;
+  let docDir = opts['doc-dir'];
+
+  // 交互模式：终端下且必填参数缺失时，逐个提问（已通过 --xxx 提供的跳过）
+  const interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY);
+  if (interactive && (!url || !name || !tool || !project)) {
+    console.log(paint(C.bold, 'a2a init —— 交互式注册向导（输入值后回车；可 Ctrl+C 取消）'));
+    console.log('');
+    const fields = [];
+    if (!url) fields.push({ key: 'url', prompt: '平台地址', default: 'http://127.0.0.1:3081' });
+    if (!name) fields.push({ key: 'name', prompt: '账号名（端+项目，全局唯一，如 A项目开发）', required: true });
+    if (!tool) fields.push({ key: 'tool', prompt: '工具类型', default: 'cursor' });
+    if (!project) fields.push({ key: 'project', prompt: '项目名称', required: true });
+    if (description === undefined) fields.push({ key: 'description', prompt: '一句话简介（可回车跳过）', default: '' });
+    if (!docDir) fields.push({ key: 'docDir', prompt: '文档同步目录（项目内任意目录，如 docs/ 或 .agent-platform/docs）', default: '.agent-platform/docs' });
+    const ans = await promptInteractive(fields);
+    if (!ans.url && !url) return fail('未提供平台地址（--url），已取消注册。');
+    if (!ans.name && !name) return fail('未提供账号名（--name），已取消注册。');
+    url = url || ans.url;
+    name = name || ans.name;
+    tool = tool || ans.tool;
+    project = project || ans.project;
+    if (description === undefined) description = ans.description;
+    if (!docDir) docDir = ans.docDir;
+  }
+
   if (!url) fail('init 需要 --url <平台地址>');
   if (!name) fail('init 需要 --name <账号名（端+项目，全局唯一）>');
   if (!tool) fail('init 需要 --tool <dsh|cursor|claude-code|other>');
   if (!project) fail('init 需要 --project <项目名>');
 
-  const description = opts.description || '';
   const capabilities = splitList(opts.capabilities);
   const tech = splitList(opts.tech);
-  const docDir = opts['doc-dir'] || '.agent-platform/docs';
+  if (!docDir) docDir = '.agent-platform/docs';
+  docDir = String(docDir).replace(/\/+$/, '') || '.agent-platform/docs';
 
   const body = { name, tool, projectName: project, docDir };
   if (description) body.description = description;
@@ -634,7 +703,7 @@ async function cmdCheckin(opts, ctx) {
   const acct = res.account || {};
 
   console.log('');
-  console.log(hl('========== platform checkin =========='));
+  console.log(hl('========== a2a checkin =========='));
   console.log(`账号: ${acct.name || acct.id || ctx.config.accountId}   状态: ${acct.status || 'starting'}`);
   console.log(`记忆版本: v${mem.version ?? 0}`);
   console.log(`未读消息: ${pending.unreadMessages ?? inboxItems.length} 条   待办任务: ${pending.todoTasks ?? taskItems.length} 个`);
@@ -657,10 +726,10 @@ async function cmdCheckin(opts, ctx) {
 
   console.log('');
   if ((pending.unreadMessages ?? inboxItems.length) > 0) {
-    console.log(paint(C.yellow, '→ 有未读消息：用 platform inbox --unread 查看'));
+    console.log(paint(C.yellow, '→ 有未读消息：用 a2a inbox --unread 查看'));
   }
   if ((pending.todoTasks ?? taskItems.length) > 0) {
-    console.log(paint(C.yellow, '→ 有待办任务：用 platform task list --status todo 查看'));
+    console.log(paint(C.yellow, '→ 有待办任务：用 a2a task list --status todo 查看'));
   }
   console.log(hl('======================================='));
 }
@@ -861,7 +930,7 @@ async function cmdMemorySet(ctx, pos) {
     console.log(`已更新记忆到 v${newVer}`);
   } catch (e) {
     if (e instanceof ApiError && e.status === 409) {
-      fail(`记忆版本冲突（当前平台版本 v${cur.version ?? '?'}）。请先 platform memory get 获取最新内容并合并，再重新 platform memory set。`);
+      fail(`记忆版本冲突（当前平台版本 v${cur.version ?? '?'}）。请先 a2a memory get 获取最新内容并合并，再重新 a2a memory set。`);
     }
     throw e;
   }
@@ -884,10 +953,10 @@ async function cmdHeartbeat(opts, ctx) {
  * ------------------------------------------------------------------------- */
 
 function printHelp() {
-  console.log(hl('Agent2Agent 统一 CLI · platform'));
+  console.log(hl('Agent2Agent 统一 CLI · a2a'));
   console.log('Agent ↔ Agent 异步协作平台的零依赖接入工具。');
   console.log('');
-  console.log(paint(C.bold, '用法:') + '  platform <命令> [选项]');
+  console.log(paint(C.bold, '用法:') + '  a2a <命令> [选项]');
   console.log('');
   console.log(paint(C.bold, '命令:'));
   const cmds = [
@@ -915,35 +984,35 @@ function printHelp() {
 
   console.log('');
   console.log(paint(C.bold, '命令用法:'));
-  console.log('  platform init --url <U> --name <N> --tool <T> --project <P> [--description D] [--capabilities a,b] [--tech x,y] [--doc-dir D]');
-  console.log('  platform whoami');
-  console.log('  platform agents');
-  console.log('  platform checkin [--status S]');
-  console.log('  platform send --to <X> --subject <S> --body <B> [--doc id]... [--need-reply] [--priority P]');
-  console.log('  platform inbox [--unread] [--limit N]');
-  console.log('  platform outbox [--limit N]');
-  console.log('  platform reply --msg <ID> --body <B> [--doc id]...');
-  console.log('  platform mark --msg <ID> --status <S>');
-  console.log('  platform task new --title <T> [--desc D] [--assignee A] [--priority P] [--source-msg M]');
-  console.log('  platform task list [--status S] [--account A]');
-  console.log('  platform task update --id <ID> [--status S] [--note N] [--assignee A]');
-  console.log('  platform doc up <file> [--desc D]');
-  console.log('  platform doc ls [--account A]');
-  console.log('  platform doc get <id> [--out FILE] [--inline]');
-  console.log('  platform sync');
-  console.log('  platform memory get');
-  console.log('  platform memory set <file>');
-  console.log('  platform heartbeat [--status S] [--note N]');
+  console.log('  a2a init --url <U> --name <N> --tool <T> --project <P> [--description D] [--capabilities a,b] [--tech x,y] [--doc-dir D]');
+  console.log('  a2a whoami');
+  console.log('  a2a agents');
+  console.log('  a2a checkin [--status S]');
+  console.log('  a2a send --to <X> --subject <S> --body <B> [--doc id]... [--need-reply] [--priority P]');
+  console.log('  a2a inbox [--unread] [--limit N]');
+  console.log('  a2a outbox [--limit N]');
+  console.log('  a2a reply --msg <ID> --body <B> [--doc id]...');
+  console.log('  a2a mark --msg <ID> --status <S>');
+  console.log('  a2a task new --title <T> [--desc D] [--assignee A] [--priority P] [--source-msg M]');
+  console.log('  a2a task list [--status S] [--account A]');
+  console.log('  a2a task update --id <ID> [--status S] [--note N] [--assignee A]');
+  console.log('  a2a doc up <file> [--desc D]');
+  console.log('  a2a doc ls [--account A]');
+  console.log('  a2a doc get <id> [--out FILE] [--inline]');
+  console.log('  a2a sync');
+  console.log('  a2a memory get');
+  console.log('  a2a memory set <file>');
+  console.log('  a2a heartbeat [--status S] [--note N]');
 
   console.log('');
   console.log(paint(C.bold, '示例:'));
-  console.log('  platform init --url http://127.0.0.1:3081 --name A项目开发 --tool cursor --project A项目');
-  console.log('  platform checkin');
-  console.log('  platform send --to B项目开发 --subject 需要API --body "请提供接口清单" --need-reply');
-  console.log('  platform inbox --unread');
-  console.log('  platform task new --title 实现登录 --priority high');
-  console.log('  platform doc up ./需求.md');
-  console.log('  platform sync');
+  console.log('  a2a init --url http://127.0.0.1:3081 --name A项目开发 --tool cursor --project A项目');
+  console.log('  a2a checkin');
+  console.log('  a2a send --to B项目开发 --subject 需要API --body "请提供接口清单" --need-reply');
+  console.log('  a2a inbox --unread');
+  console.log('  a2a task new --title 实现登录 --priority high');
+  console.log('  a2a doc up ./需求.md');
+  console.log('  a2a sync');
 }
 
 /* ------------------------------------------------------------------------- *
@@ -1002,21 +1071,21 @@ async function main() {
       if (sub === 'new') await cmdTaskNew(opts, ctx);
       else if (sub === 'list') await cmdTaskList(opts, ctx);
       else if (sub === 'update') await cmdTaskUpdate(opts, ctx);
-      else fail('task 子命令: new | list | update（用 platform help 查看用法）');
+      else fail('task 子命令: new | list | update（用 a2a help 查看用法）');
       break;
     case 'doc':
       if (sub === 'up') await cmdDocUp(opts, ctx, pos.slice(2));
       else if (sub === 'ls') await cmdDocLs(opts, ctx);
       else if (sub === 'get') await cmdDocGet(opts, ctx, pos.slice(2));
-      else fail('doc 子命令: up | ls | get（用 platform help 查看用法）');
+      else fail('doc 子命令: up | ls | get（用 a2a help 查看用法）');
       break;
     case 'memory':
       if (sub === 'get') await cmdMemoryGet(ctx);
       else if (sub === 'set') await cmdMemorySet(ctx, pos.slice(2));
-      else fail('memory 子命令: get | set（用 platform help 查看用法）');
+      else fail('memory 子命令: get | set（用 a2a help 查看用法）');
       break;
     default:
-      fail(`未知命令: ${cmd}（用 platform help 查看全部命令）`);
+      fail(`未知命令: ${cmd}（用 a2a help 查看全部命令）`);
   }
 }
 

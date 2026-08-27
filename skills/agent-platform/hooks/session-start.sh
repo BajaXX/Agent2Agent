@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Agent2Agent · Claude Code SessionStart hook
 #
-# 会话启动时，若项目根目录存在 .agent-platform.json，则执行 `platform checkin`
+# 会话启动时，若项目根目录存在 .agent-platform.json，则执行 `a2a checkin`
 # 输出摘要（双向同步 + 收件箱/待办/记忆摘要）。平台离线或未接入时静默跳过，
 # 绝不打断会话。
 
@@ -38,16 +38,16 @@ if [[ -z "$ROOT" ]]; then
   exit 0
 fi
 
-# 3) 定位 platform CLI：优先项目内 cli/platform.js，其次项目根 platform.js，最后 PATH
+# 3) 定位 a2a CLI：优先项目内 cli/a2a.js，其次项目根 a2a.js，最后 PATH
 CLI=""
-if [[ -f "$ROOT/cli/platform.js" ]]; then
-  CLI="node $ROOT/cli/platform.js"
-elif [[ -f "$ROOT/platform.js" ]]; then
-  CLI="node $ROOT/platform.js"
-elif command -v platform >/dev/null 2>&1; then
-  CLI="platform"
+if [[ -f "$ROOT/cli/a2a.js" ]]; then
+  CLI="node $ROOT/cli/a2a.js"
+elif [[ -f "$ROOT/a2a.js" ]]; then
+  CLI="node $ROOT/a2a.js"
+elif command -v a2a >/dev/null 2>&1; then
+  CLI="a2a"
 else
-  echo "[agent-platform] 未找到 platform CLI（项目内 cli/platform.js 或 PATH 均无），跳过 check-in" >&2
+  echo "[agent-platform] 未找到 a2a CLI（项目内 cli/a2a.js 或 PATH 均无），跳过 check-in" >&2
   exit 0
 fi
 

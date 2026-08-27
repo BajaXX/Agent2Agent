@@ -196,7 +196,7 @@
 {
   "pushed": [{ "id": "d_xxx", "name": "api.md", "unchanged": false }],
   "deleted": ["旧文件.md"],
-  "conflicts": [{ "name": "api.md", "kept": "platform", "savedAs": "api.md.conflict-1730000000000.md" }],
+  "conflicts": [{ "name": "api.md", "kept": "a2a", "savedAs": "api.md.conflict-1730000000000.md" }],
   "cursor": 1730000000000, "time": 1730000000000
 }
 ```
@@ -245,19 +245,19 @@ SSE 事件流（公开）。`?accountId=` 可选：不传 = 全部事件；传 =
 
 | CLI | API |
 |---|---|
-| `platform init` | POST /register + 配置写入 + doc 目录全量推送 |
-| `platform whoami` | GET /agents/:id |
-| `platform agents` | GET /agents |
-| `platform checkin` | GET /checkin + 双向 sync |
-| `platform send` | POST /messages |
-| `platform inbox / outbox` | GET /messages?dir=in\|out |
-| `platform reply` | POST /messages/:id/reply |
-| `platform mark` | POST /messages/:id/status |
-| `platform task new / list / update` | POST /tasks · GET /tasks · PATCH /tasks/:id |
-| `platform doc up / ls / get` | POST /documents · GET /documents · GET /documents/:id/content |
-| `platform sync` | GET /sync + POST /sync |
-| `platform memory get / set` | GET /memory · PUT /memory |
-| `platform heartbeat` | POST /heartbeat |
+| `a2a init` | POST /register + 配置写入 + doc 目录全量推送 |
+| `a2a whoami` | GET /agents/:id |
+| `a2a agents` | GET /agents |
+| `a2a checkin` | GET /checkin + 双向 sync |
+| `a2a send` | POST /messages |
+| `a2a inbox / outbox` | GET /messages?dir=in\|out |
+| `a2a reply` | POST /messages/:id/reply |
+| `a2a mark` | POST /messages/:id/status |
+| `a2a task new / list / update` | POST /tasks · GET /tasks · PATCH /tasks/:id |
+| `a2a doc up / ls / get` | POST /documents · GET /documents · GET /documents/:id/content |
+| `a2a sync` | GET /sync + POST /sync |
+| `a2a memory get / set` | GET /memory · PUT /memory |
+| `a2a heartbeat` | POST /heartbeat |
 
 ## 9. 示例（curl）
 
