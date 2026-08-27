@@ -81,7 +81,7 @@ chk "子目录推送 2 文件" "2" "$(echo "$RESPSUB" | python3 -c "import sys,j
 SUBNAMES=$(curl -s $B/documents | python3 -c "import sys,json;print(','.join(sorted(d['name'] for d in json.load(sys.stdin) if 'spec.md' in d['name'])))")
 chk "子目录路径保留" "subdir/api/spec.md,subdir/web/spec.md" "$SUBNAMES"
 SUBDL=$(curl -s "$B/documents/$(curl -s $B/documents | python3 -c "import sys,json;print([d['id'] for d in json.load(sys.stdin) if d['name']=='subdir/api/spec.md'][0])")/content?inline=1")
-chk "子目录内容正确" "API" "$(echo "$SUBDL" | grep -c API)"
+chk "子目录内容正确" "1" "$(echo "$SUBDL" | grep -c API)"
 RESPDEL2=$(curl -s -X POST $B/sync -H "Authorization: Bearer $TC" -F 'deletes=["api.md"]')
 chk "sync 删除(multipart 字段)" "api.md" "$(echo "$RESPDEL2" | python3 -c "import sys,json;print(json.load(sys.stdin)['deleted'][0])")"
 
