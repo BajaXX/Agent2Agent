@@ -37,7 +37,7 @@ function decodeFilename(name) {
   return s;
 }
 
-/** 清洗文件名：去掉路径、禁 ..、限制长度 */
+/** 清洗文件名：去掉路径、禁 ..、限制长度（单文件场景） */
 function sanitizeFilename(name) {
   let base = decodeFilename(name).split(/[\\/]/).pop();
   base = base.replace(/\.\.+/g, '.').replace(/[^\w\u4e00-\u9fa5.\-() ]/g, '_');
@@ -47,6 +47,29 @@ function sanitizeFilename(name) {
     base = base.slice(0, 180 - ext.length) + ext;
   }
   return base;
+}
+
+/**
+ * 清洗相对路径：**保留目录结构**，逐段清洗、拒绝空段与 ..、限制单段长度。
+ * 例如 "docs/api/需求.md" 原样保留；"../x/../y.md" → "x/y.md"。
+ */
+function sanitizeRelPath(name) {
+  const parts = String(name || '')
+    .split(/[\\/]+/)
+    .map((seg) => decodeFilename(seg)
+      .replace(/\.\.+/g, '.')
+      .replace(/[^\w\u4e00-\u9fa5.\-() ]/g, '_'))
+    .filter((seg) => seg && seg !== '.' && seg !== '..');
+  if (!parts.length) parts.push('file');
+  return parts
+    .map((seg) => {
+      if (seg.length > 180) {
+        const ext = path.extname(seg);
+        return seg.slice(0, 180 - ext.length) + ext;
+      }
+      return seg;
+    })
+    .join('/');
 }
 
 function fileExists(accountId, filename) {
@@ -72,24 +95,25 @@ function saveUploadedFile(accountId, originalName, buffer) {
   return { storedName, storedPath: finalPath, size: buffer.length, sha256: sha256File(finalPath) };
 }
 
+/** 保存文档（相对路径，保留子目录结构）；返回 storedName = 清洗后的相对路径 */
 function saveDocFile(accountId, name, buffer) {
   const { docs } = ensureAccountDirs(accountId);
-  const safeName = sanitizeFilename(name);
-  const finalPath = path.join(docs, safeName);
+  const safeName = sanitizeRelPath(name);
+  const finalPath = path.join(docs, ...safeName.split('/'));
+  fs.mkdirSync(path.dirname(finalPath), { recursive: true });
   fs.writeFileSync(finalPath, buffer);
   return { storedName: safeName, storedPath: finalPath, size: buffer.length, sha256: sha256File(finalPath) };
 }
 
-/** 冲突副本：<name>.conflict-<ts>.<ext> */
+/** 冲突副本：<dir>/<name>.conflict-<ts>.<ext>（与源文件同级）；直接落盘，返回保存结果 */
 function saveConflictCopy(accountId, name, buffer) {
-  const { docs } = ensureAccountDirs(accountId);
-  const safe = sanitizeFilename(name);
-  const base = path.parse(safe).name;
-  const ext = path.extname(safe);
-  const conflictName = `${base}.conflict-${Date.now()}${ext}`;
-  const finalPath = path.join(docs, conflictName);
-  fs.writeFileSync(finalPath, buffer);
-  return conflictName;
+  const safe = sanitizeRelPath(name);
+  const dir = path.posix.dirname(safe);
+  const base = path.posix.basename(safe);
+  const parsed = path.parse(base);
+  const conflictBase = `${parsed.name}.conflict-${Date.now()}${parsed.ext}`;
+  const conflictName = dir === '.' ? conflictBase : `${dir}/${conflictBase}`;
+  return saveDocFile(accountId, conflictName, buffer);
 }
 
 function readDocFile(accountId, storedPath) {
@@ -110,6 +134,16 @@ function deleteDocFile(accountId, storedPath) {
     fs.unlinkSync(resolved);
   } catch (e) {
     /* 文件可能已不存在 */
+  }
+  // 逐级清理空父目录（遇非空即停）
+  let dir = path.dirname(resolved);
+  while (dir.startsWith(path.resolve(docs) + path.sep)) {
+    try {
+      fs.rmdirSync(dir);
+    } catch (e) {
+      break;
+    }
+    dir = path.dirname(dir);
   }
 }
 
@@ -147,6 +181,7 @@ module.exports = {
   accountRoot,
   ensureAccountDirs,
   sanitizeFilename,
+  sanitizeRelPath,
   fileExists,
   saveUploadedFile,
   saveDocFile,

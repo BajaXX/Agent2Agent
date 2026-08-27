@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -u
-B="http://127.0.0.1:3081/api/v1"
+B="${A2A_TEST_BASE:-http://127.0.0.1:3081/api/v1}"
 PASS=0; FAIL=0
 chk() { if [ "$2" = "$3" ]; then PASS=$((PASS+1)); echo "  ✓ $1"; else FAIL=$((FAIL+1)); echo "  ✗ $1: expect [$2] got [$3]"; fi }
 
@@ -70,6 +70,18 @@ RESPCONF=$(curl -s -X POST $B/sync -H "Authorization: Bearer $TC" -F "files=@api
 chk "旧 mtime 冲突副本" "conflict" "$(echo "$RESPCONF" | python3 -c "import sys,json;d=json.load(sys.stdin);print('conflict' if d.get('conflicts') else 'none')")"
 RESPOK=$(curl -s -X POST $B/sync -H "Authorization: Bearer $TC" -F "files=@api.md" -F 'manifest=[{"name":"api.md","mtime":9999999999999}]')
 chk "新 mtime 覆盖" "0" "$(echo "$RESPOK" | python3 -c "import sys,json;print(len(json.load(sys.stdin)['conflicts']))")"
+# 子目录结构保留：同名文件在不同子目录应互不覆盖
+mkdir -p subdir/api subdir/web
+echo "API 版本" > subdir/api/spec.md
+echo "WEB 版本" > subdir/web/spec.md
+RESPSUB=$(curl -s -X POST $B/sync -H "Authorization: Bearer $TC" \
+  -F "files=@subdir/api/spec.md;filename=subdir/api/spec.md" \
+  -F "files=@subdir/web/spec.md;filename=subdir/web/spec.md")
+chk "子目录推送 2 文件" "2" "$(echo "$RESPSUB" | python3 -c "import sys,json;print(len(json.load(sys.stdin)['pushed']))")"
+SUBNAMES=$(curl -s $B/documents | python3 -c "import sys,json;print(','.join(sorted(d['name'] for d in json.load(sys.stdin) if 'spec.md' in d['name'])))")
+chk "子目录路径保留" "subdir/api/spec.md,subdir/web/spec.md" "$SUBNAMES"
+SUBDL=$(curl -s "$B/documents/$(curl -s $B/documents | python3 -c "import sys,json;print([d['id'] for d in json.load(sys.stdin) if d['name']=='subdir/api/spec.md'][0])")/content?inline=1")
+chk "子目录内容正确" "API" "$(echo "$SUBDL" | grep -c API)"
 RESPDEL2=$(curl -s -X POST $B/sync -H "Authorization: Bearer $TC" -F 'deletes=["api.md"]')
 chk "sync 删除(multipart 字段)" "api.md" "$(echo "$RESPDEL2" | python3 -c "import sys,json;print(json.load(sys.stdin)['deleted'][0])")"
 

@@ -471,9 +471,12 @@ async function pullOnce(config, configDir, state) {
   let removed = 0;
 
   for (const ch of changes) {
-    const accountId = String(ch.accountId || 'unknown').replace(/\.\./g, '_');
-    const name = String(ch.name || ch.id || 'file').replace(/\.\./g, '_');
-    const file = path.join(docRoot, '_inbox', accountId, name);
+    const accountId = String(ch.accountId || 'unknown').replace(/[\\/]/g, '_').replace(/\.\./g, '_');
+    // 保留平台端的相对目录结构（name 可能含子目录），并做路径防护
+    const relParts = String(ch.name || ch.id || 'file')
+      .split(/[\\/]+/)
+      .filter((p) => p && p !== '.' && p !== '..');
+    const file = path.join(docRoot, '_inbox', accountId, ...relParts);
     if (ch.deleted) {
       if (fs.existsSync(file)) {
         fs.unlinkSync(file);

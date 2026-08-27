@@ -72,7 +72,7 @@ router.post('/documents', requireAuth, upload.single('file'), (req, res) => {
     if (!req.file) return err(res, 400, '缺少 file 字段（multipart 上传）');
     const accountId = req.account.id;
     const description = typeof req.body.description === 'string' ? req.body.description : '';
-    const name = req.file.originalname || 'file';
+    const name = storage.sanitizeRelPath(req.file.originalname || 'file');
 
     // 同名替换：软删除旧记录
     const existing = findDocByName(accountId, name);
@@ -181,22 +181,23 @@ router.post('/sync', requireAuth, upload.array('files', 100), (req, res) => {
   }
   const deletedNames = [];
   for (const delName of Array.isArray(deletes) ? deletes : []) {
-    const row = findDocByName(accountId, String(delName));
+    const safeName = storage.sanitizeRelPath(String(delName));
+    const row = findDocByName(accountId, safeName);
     if (row) {
       softDeleteDoc(row);
       deletedNames.push(row.name);
     }
   }
 
-  // 2) 推送文件（LWW 冲突处理）
+  // 2) 推送文件（LWW 冲突处理；文件名保留相对路径结构）
   const pushed = [];
   const conflicts = [];
   const files = req.files || [];
   for (const file of files) {
-    const name = file.originalname || 'file';
+    const name = storage.sanitizeRelPath(file.originalname || 'file');
     const buffer = file.buffer;
     const sha = storage.sha256Buffer(buffer);
-    const mtime = mtimeOf(name);
+    const mtime = mtimeOf(file.originalname || name);
     const existing = findDocByName(accountId, name);
 
     if (existing && existing.sha256 === sha) {
@@ -207,18 +208,17 @@ router.post('/sync', requireAuth, upload.array('files', 100), (req, res) => {
     if (existing) {
       const platformTime = existing.updated_at;
       if (platformTime > mtime) {
-        // 平台版本更新 → 保留平台，本地版本另存冲突副本
-        const conflictName = storage.saveConflictCopy(accountId, name, buffer);
-        const saved = storage.saveDocFile(accountId, conflictName, buffer);
+        // 平台版本更新 → 保留平台，本地版本另存冲突副本（与源文件同级）
+        const saved = storage.saveConflictCopy(accountId, name, buffer);
         db.prepare(`INSERT INTO documents
           (id, seq, account_id, name, stored_path, size, mime, description, sha256, created_at, updated_at, deleted)
           VALUES (?,?,?,?,?,?,?,?,?,?,?,0)`)
           .run(genId('d'), getSeq('documents'), accountId, saved.storedName, saved.storedPath,
             buffer.length, file.mimetype || 'application/octet-stream', '冲突副本', sha, now(), now());
-        conflicts.push({ name, kept: 'platform', savedAs: conflictName });
+        conflicts.push({ name, kept: 'platform', savedAs: saved.storedName });
         emit('doc', accountId, null, {
-          summary: `同步冲突：${name} 已保留平台版本，本地版本另存 ${conflictName}（人工处置）`,
-          conflict: true, name, savedAs: conflictName,
+          summary: `同步冲突：${name} 已保留平台版本，本地版本另存 ${saved.storedName}（人工处置）`,
+          conflict: true, name, savedAs: saved.storedName,
         });
         continue;
       }
