@@ -1,0 +1,40 @@
+# 推送到 GitHub（打 v* tag）后自动发布 agent2agent-cli 到 npm
+# 使用 npm Trusted Publishing（OIDC），无需任何 token
+#
+# 使用方式：
+#   1. 在 npm 网站为 agent2agent-cli 配置 Trusted Publishing，关联本仓库（见 PUBLISHING.md）
+#   2. 本地：git tag v0.2.1 && git push origin v0.2.1
+#   3. Actions 自动发布；包版本号取 tag（去掉 v 前缀）
+
+name: Publish to npm
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  id-token: write   # Trusted Publishing（OIDC）必需
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      # 用 tag 版本号（v0.2.1 → 0.2.1）同步 cli/package.json 的 version
+      - name: Sync version from tag
+        working-directory: cli
+        run: |
+          node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));p.version=process.env.GITHUB_REF_NAME.replace(/^v/,'');fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n')"
+
+      # 发布（Trusted Publishing：npm 自动通过 OIDC 认证，无需 NODE_AUTH_TOKEN）
+      - name: Publish to npm
+        working-directory: cli
+        run: npm publish --provenance --access public

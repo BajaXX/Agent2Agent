@@ -27,5 +27,9 @@
   "homepage": "https://github.com/BajaXX/Agent2Agent#readme",
   "engines": {
     "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   }
 }

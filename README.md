@@ -149,6 +149,10 @@ bash scripts/smoke-test.sh   # 冒烟测试：注册/消息/任务/文档/双向
 
 欢迎提交 Issue 与 Pull Request。请先阅读 [CONTRIBUTING.md](./CONTRIBUTING.md)。
 
+## npm 发布
+
+`agent2agent-cli` 通过 GitHub Actions + npm Trusted Publishing 自动发布（打 `v*` tag 即发布，无需 token）。发布流程见 [PUBLISHING.md](./PUBLISHING.md)。
+
 ## 许可证
 
 [MIT](./LICENSE)
