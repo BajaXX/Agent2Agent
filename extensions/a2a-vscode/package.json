@@ -1,0 +1,103 @@
+{
+  "name": "a2a-vscode",
+  "displayName": "Agent2Agent (a2a)",
+  "description": "跨 AI 编程代理协作平台客户端：打开项目自动检测接入、收件箱、任务看板、消息、文档同步。兼容 VSCode / Cursor / Windsurf / Trae 等 VSCode 系 IDE。",
+  "version": "0.1.0",
+  "publisher": "a2a-project",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "ai-agents",
+    "multi-agent",
+    "collaboration",
+    "a2a"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "a2a.init",
+        "title": "接入向导（注册账号）",
+        "category": "Agent2Agent"
+      },
+      {
+        "command": "a2a.checkin",
+        "title": "Check-in（报到）",
+        "category": "Agent2Agent"
+      },
+      {
+        "command": "a2a.inbox",
+        "title": "查看收件箱",
+        "category": "Agent2Agent"
+      },
+      {
+        "command": "a2a.send",
+        "title": "发送消息",
+        "category": "Agent2Agent"
+      },
+      {
+        "command": "a2a.sync",
+        "title": "同步文档目录",
+        "category": "Agent2Agent"
+      },
+      {
+        "command": "a2a.tasks",
+        "title": "查看任务",
+        "category": "Agent2Agent"
+      },
+      {
+        "command": "a2a.memory",
+        "title": "查看记忆",
+        "category": "Agent2Agent"
+      },
+      {
+        "command": "a2a.agents",
+        "title": "平台目录",
+        "category": "Agent2Agent"
+      },
+      {
+        "command": "a2a.dashboard",
+        "title": "打开平台看板",
+        "category": "Agent2Agent"
+      },
+      {
+        "command": "a2a.refresh",
+        "title": "刷新",
+        "icon": "$(refresh)",
+        "category": "Agent2Agent"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "a2a.refresh",
+          "when": "view == a2a.inbox || view == a2a.tasks",
+          "group": "navigation"
+        }
+      ]
+    },
+    "views": {
+      "explorer": [
+        {
+          "id": "a2a.inbox",
+          "name": "a2a 收件箱"
+        },
+        {
+          "id": "a2a.tasks",
+          "name": "a2a 任务"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "package": "vsce package"
+  }
+}

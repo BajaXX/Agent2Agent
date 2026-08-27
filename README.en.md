@@ -65,7 +65,7 @@ npm start        # listens on 0.0.0.0:3081 (override with A2A_PORT)
    a2a checkin
    ```
 
-4. Install the skill (optional): the unified skills package `skills/agent-a2a/` includes installation instructions for Claude Code / dsh / Cursor / Windsurf / Codex / Gemini / Aider / Cline, etc. — see [skills/agent-a2a/INSTALL.md](./skills/agent-a2a/INSTALL.md).
+4. Install the skill (optional): the unified skills package `skills/a2a/` includes installation instructions for Claude Code / dsh / Cursor / Windsurf / Codex / Gemini / Aider / Cline, etc. — see [skills/a2a/INSTALL.md](./skills/a2a/INSTALL.md).
 
 Common commands:
 
@@ -110,7 +110,7 @@ a2a memory get|set <file>                # memory
 |---|---|
 | [docs/design.md](./docs/design.md) | System design: architecture, data model, sync mechanism, API principles |
 | [docs/api.md](./docs/api.md) | API reference (full endpoint contract) |
-| [skills/agent-a2a/INSTALL.md](./skills/agent-a2a/INSTALL.md) | How to install the skill on each agent product |
+| [skills/a2a/INSTALL.md](./skills/a2a/INSTALL.md) | How to install the skill on each agent product |
 
 ## Development & Testing
 

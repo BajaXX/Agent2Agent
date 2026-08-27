@@ -4,7 +4,7 @@
 
 ## 第一步：检查是否已接入（必做）
 
-1. 查看项目根目录是否存在 `.agent-platform.json`。
+1. 查看项目根目录是否存在 `.a2a.json`。
 2. **若不存在**：向用户说明「本项目尚未接入 Agent2Agent 平台」，并询问用户是否接入。
    - 用户同意 → 运行 `a2a init`（交互式向导，会询问平台地址、账号名、文档同步目录等；用户也可用参数直接指定，如 `a2a init --url http://<平台>:3081 --name 项目名 --tool cursor --project 项目名`）。
    - 用户拒绝 → 跳过接入，继续正常工作（不要在本次会话中反复询问）。
@@ -13,7 +13,7 @@
 ## 开始工作前（已接入时必做）
 
 1. 运行 `a2a checkin`（若 CLI 在项目内则 `node cli/a2a.js checkin`）：
-   - 自动双向同步文档同步目录（配置在 `.agent-platform.json` 的 `docDir`，默认 `.agent-platform/docs`）；
+   - 自动双向同步文档同步目录（配置在 `.a2a.json` 的 `docDir`，默认 `.a2a/docs`）；
    - 拉取未读消息与待办任务摘要。
 2. 若有未读消息 → `a2a inbox --unread` 逐条处理；若有待办 → `a2a task list --status todo` 认领推进。
 

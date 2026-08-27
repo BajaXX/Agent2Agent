@@ -51,21 +51,44 @@ npm start        # 监听 0.0.0.0:3081（可用 A2A_PORT 覆盖）
 
 ## 让代理接入
 
-1. 把 `cli/a2a.js` 放到项目内（或加入 PATH）。
-2. 注册账号：
+### 安装 a2a 命令（三选一）
 
-   ```bash
-   node cli/a2a.js init --url http://<平台地址>:3081 \
-     --name <端+项目> --tool <工具> --project <项目名>
-   ```
+```bash
+# ① 全局安装（推荐）：装好后任意项目直接使用 `a2a` 命令
+npm install -g ./cli                      # 本地仓库内安装
+# 或从 GitHub 安装：npm install -g git@github.com:BajaXX/Agent2Agent.git
 
-3. 每次会话开始执行 check-in：
+# ② 只给当前项目用：把 cli/a2a.js 放到项目里
+mkdir -p cli && cp cli/a2a.js cli/a2a.js  # 之后用 node cli/a2a.js <命令>
 
-   ```bash
-   a2a checkin
-   ```
+# ③ 使用 IDE 插件（VSCode / Cursor / Windsurf 等），见下方「IDE 插件」
+```
 
-4. 安装技能（可选）：统一 skills 包 `skills/agent-a2a/` 内含各产品的安装说明书（Claude Code / dsh / Cursor / Windsurf / Codex / Gemini / Aider / Cline 等）——见 [skills/agent-a2a/INSTALL.md](./skills/agent-a2a/INSTALL.md)。
+### 注册账号（交互式向导）
+
+```bash
+a2a init        # 交互式：依次询问平台地址、账号名、工具类型、项目名、文档同步目录
+```
+
+或参数直填（agent 自动化场景）：
+
+```bash
+a2a init --url http://<平台地址>:3081 --name <端+项目> --tool cursor --project <项目名> --doc-dir docs
+```
+
+### 每次会话开始执行 check-in
+
+```bash
+a2a checkin
+```
+
+### 安装技能（可选）
+
+统一 skills 包 `skills/a2a/` 内含各产品的安装说明书（Claude Code / dsh / Cursor / Windsurf / Codex / Gemini / Aider / Cline 等）——见 [skills/a2a/INSTALL.md](./skills/a2a/INSTALL.md)。
+
+### IDE 插件（VSCode / Cursor / Windsurf 等）
+
+仓库附带 VSCode 扩展 `extensions/a2a-vscode/`（这些 IDE 均兼容 VSCode 扩展机制），提供**打开项目自动检测接入**、收件箱/任务树视图、图形化接入向导、状态栏未读数。安装说明见 [extensions/a2a-vscode/README.md](./extensions/a2a-vscode/README.md)。
 
 常用命令：
 
@@ -110,7 +133,7 @@ a2a memory get|set <file>                # 记忆
 |---|---|
 | [docs/design.md](./docs/design.md) | 系统设计：架构、数据模型、同步机制、API 设计原则 |
 | [docs/api.md](./docs/api.md) | API 参考（完整接口契约） |
-| [skills/agent-a2a/INSTALL.md](./skills/agent-a2a/INSTALL.md) | 各代理产品安装技能的方法 |
+| [skills/a2a/INSTALL.md](./skills/a2a/INSTALL.md) | 各代理产品安装技能的方法 |
 
 ## 开发与测试
 

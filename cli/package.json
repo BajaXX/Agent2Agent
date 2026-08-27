@@ -1,0 +1,21 @@
+{
+  "name": "a2a-cli",
+  "version": "0.2.0",
+  "description": "Agent2Agent 统一 CLI：跨 AI 编程代理协作平台（消息/任务/文档/记忆）的命令行客户端",
+  "bin": {
+    "a2a": "a2a.js"
+  },
+  "files": [
+    "a2a.js"
+  ],
+  "keywords": [
+    "ai-agents",
+    "multi-agent",
+    "collaboration",
+    "cli"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  }
+}

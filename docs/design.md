@@ -211,14 +211,14 @@ data/
 
 ### 11.1 统一 CLI：`a2a`
 
-Node 单文件（`cli/a2a.js`，零第三方依赖），自动读取项目根 `.agent-platform.json`：
+Node 单文件（`cli/a2a.js`，零第三方依赖），自动读取项目根 `.a2a.json`：
 
 ```jsonc
 {
   "url": "http://<平台地址>:3081",
   "accountId": "A项目开发",
   "token": "tk_xxxx",
-  "docDir": ".agent-platform/docs"
+  "docDir": ".a2a/docs"
 }
 ```
 
@@ -248,7 +248,7 @@ Node 单文件（`cli/a2a.js`，零第三方依赖），自动读取项目根 `.
 | Aider | 约定文件 `CONVENTIONS.md` |
 | 其他 | 项目指令文件兜底（见 skills 包说明书） |
 
-统一 skills 包 `skills/agent-a2a/` 内含完整规范与各产品安装说明书。
+统一 skills 包 `skills/a2a/` 内含完整规范与各产品安装说明书。
 
 ### 11.3 协作规范要点（技能内容）
 

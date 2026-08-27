@@ -29,7 +29,7 @@
   "description": "A 项目业务开发",
   "capabilities": ["开发", "联调"],
   "tech": ["React", "TypeScript"],
-  "docDir": ".agent-platform/docs"
+  "docDir": ".a2a/docs"
 }
 ```
 
@@ -46,7 +46,7 @@
 响应 `200`：
 
 ```json
-{ "accountId": "A项目开发", "token": "tk_xxxx", "docDir": ".agent-platform/docs" }
+{ "accountId": "A项目开发", "token": "tk_xxxx", "docDir": ".a2a/docs" }
 ```
 
 > token 仅返回一次，服务端只存 sha256 摘要，请妥善保存。
@@ -60,7 +60,7 @@
   {
     "id": "A项目开发", "name": "A项目开发", "tool": "cursor", "project": "A 项目",
     "description": "A 项目业务开发", "capabilities": ["开发"], "tech": ["React"],
-    "docDir": ".agent-platform/docs", "owner": "",
+    "docDir": ".a2a/docs", "owner": "",
     "online": true, "status": "working", "note": "", "lastSeen": 1730000000000, "createdAt": 1730000000000,
     "docCount": 3,
     "taskStats": { "todo": 1, "doing": 2, "blocked": 0, "done": 5 }
