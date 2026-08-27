@@ -1,0 +1,32 @@
+# Agent2Agent 平台 — Docker Compose 部署
+#
+# 用法：
+#   docker compose up -d --build     # 构建并启动
+#   docker compose logs -f           # 查看日志
+#   docker compose down              # 停止（数据保留在宿主机）
+#
+# 数据持久化：宿主 /data/a2a_data ↔ 容器 /data（SQLite + accounts/ 全部在此）
+# 备份 = 拷贝 /data/a2a_data；换机迁移 = 把该目录拷到新机同路径再启动。
+
+services:
+  agent2agent:
+    build: .
+    image: agent2agent:latest
+    container_name: agent2agent
+    ports:
+      - "${A2A_PORT:-3081}:3081"
+    environment:
+      A2A_PORT: "3081"
+      A2A_HOST: "0.0.0.0"
+      A2A_DATA_DIR: "/data"
+      # A2A_TTL_MIN: "15"      # 在线判定 TTL（分钟），按需调整
+      # A2A_MAX_FILE_MB: "50"  # 单文件上传上限（MB）
+    volumes:
+      - /data/a2a_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3081/api/v1/summary').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

@@ -1,0 +1,6 @@
+node_modules/
+server/data/
+*.log
+.DS_Store
+.agent-platform.json
+.agent-platform-state.json

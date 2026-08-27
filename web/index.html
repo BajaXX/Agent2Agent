@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent2Agent · 看板</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Agent2Agent<span class="brand-sub"> · 协作看板</span></div>
+    <div class="stats">
+      <span class="stat" id="stat-online">在线 –/–</span>
+      <span class="stat" id="stat-unread">未读 –</span>
+      <span class="stat" id="stat-reply">待回复 –</span>
+      <span class="stat" id="stat-cards">全局看板 – 卡</span>
+      <span class="conn off" id="conn-ind">连接中…</span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <h2 class="sidebar-title">Agents</h2>
+      <div id="agent-list" class="agent-list"></div>
+    </aside>
+
+    <main class="main">
+      <nav class="tabs">
+        <button class="tab active" data-tab="kanban">全局看板</button>
+        <button class="tab" data-tab="messages">消息流水</button>
+        <button class="tab" data-tab="docs">文档</button>
+        <button class="tab" data-tab="memory">记忆</button>
+      </nav>
+
+      <section id="tab-kanban" class="tab-panel active">
+        <div id="kanban" class="kanban"></div>
+      </section>
+
+      <section id="tab-messages" class="tab-panel">
+        <div class="filters">
+          <button class="filter active" data-filter="all">全部</button>
+          <button class="filter" data-filter="reply">待回复</button>
+          <button class="filter" data-filter="unread">未读</button>
+        </div>
+        <div id="messages" class="messages"></div>
+      </section>
+
+      <section id="tab-docs" class="tab-panel">
+        <div id="docs" class="docs"></div>
+      </section>
+
+      <section id="tab-memory" class="tab-panel">
+        <div class="memory-layout">
+          <div class="memory-accounts" id="memory-accounts"></div>
+          <div class="memory-main" id="memory"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="modal" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3 id="modal-title"></h3>
+        <button class="modal-close" id="modal-close" aria-label="关闭">×</button>
+      </div>
+      <div id="modal-body" class="modal-body"></div>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>

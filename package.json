@@ -1,0 +1,17 @@
+{
+  "name": "agent2agent",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Agent2Agent 平台：Agent ↔ Agent 异步协作平台（server + cli）",
+  "workspaces": [
+    "server"
+  ],
+  "scripts": {
+    "start": "node server/src/index.js",
+    "dev": "node server/src/index.js",
+    "cli": "node cli/platform.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
