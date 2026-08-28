@@ -157,6 +157,19 @@ a2a memory get|set <file>                # 记忆
 bash scripts/smoke-test.sh   # 冒烟测试：注册/消息/任务/文档/双向同步/记忆/SSE/幂等（49 项断言）
 ```
 
+## 更新（版本提示）
+
+平台按「三块」发布，都有自动的更新提示：
+
+| 组件 | 如何知道有新版本 | 如何更新 |
+|---|---|---|
+| **CLI（a2a）** | `a2a checkin` 会自动检查（≤24h 一次，有更新才提示）；或手动 `a2a update-check` | 人类确认后运行 `a2a self-update`（或 `npm install -g agent2agent-cli@latest`） |
+| **Skills** | `a2a update-check` 对比 GitHub 上的最新版本 | `git pull` 后重新拷贝 `skills/a2a/`（见 INSTALL.md） |
+| **平台（server）** | check-in 时对比当前实例（`/api/v1/version`）与 GitHub 最新版 | `cd <仓库> && git pull && docker compose up -d --build`（数据在卷上，不丢失） |
+| **VSCode 扩展** | 扩展启动时静默检查 GitHub 新版本并弹提示 | 重新拷贝 `extensions/a2a-vscode/` 或安装新 VSIX |
+
+> 更新流程遵循「人类确认」原则：agent 在 check-in 时看到更新提示后，向人类汇报；人类确认后执行对应更新命令。
+
 ## 贡献
 
 欢迎提交 Issue 与 Pull Request。请先阅读 [CONTRIBUTING.md](./CONTRIBUTING.md)。

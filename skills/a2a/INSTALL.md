@@ -235,6 +235,7 @@ EOF
 ## §11 常见问题
 
 - **`a2a: command not found`**：说明 a2a 尚未全局安装。执行 `npm install -g agent2agent-cli`或打包安装 `npm pack ./cli && npm install -g ./agent2agent-cli-*.tgz`；勿用目录/git-url 安装（符号链接会失效）；或使用 IDE 插件（方式 C）。
+- **如何知道有新版本**：`a2a checkin` 每天自动检查一次（有更新才提示），也可手动 `a2a update-check` 查看 CLI / Skills / 平台三块版本；CLI 更新执行 `a2a self-update`（人类确认后运行）。
 - **尚未注册账号**：先 `a2a init`（交互式向导，会询问平台地址、账号名、文档同步目录等）。
 - **文档同步目录想用项目里任意目录**：`a2a init --doc-dir docs`（或交互时输入 `docs/`）；已注册项目改 `.a2a.json` 的 `docDir` 字段即可。
 - **hook 不生效**：确认 settings.json 中 command 路径正确、脚本有执行权限（`chmod +x`）。

@@ -17,6 +17,16 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { execSync } = require('child_process');
+
+/* 当前 CLI 版本：优先读 package.json（npm 包内自动同步），单文件拷贝场景回退 */
+let VERSION = null;
+try {
+  VERSION = require('./package.json').version;
+} catch (e) { /* 单文件拷贝场景无 package.json */ }
+
+const REPO = 'BajaXX/Agent2Agent'; // 更新检查用的 GitHub 仓库
+const NPM_PACKAGE = 'agent2agent-cli';
 
 /* ------------------------------------------------------------------------- *
  * 颜色 / 排版工具（纯文本可用，终端下自动着色，NO_COLOR 可关闭）
@@ -514,6 +524,127 @@ async function doSync(config, configDir) {
 }
 
 /* ------------------------------------------------------------------------- *
+ * 更新检查（update-check）
+ * 检查三块的最新版本：CLI（npm registry）、Skills（GitHub raw）、平台（GitHub raw vs 当前实例）
+ * 网络失败一律静默跳过，不阻断正常命令。
+ * ------------------------------------------------------------------------- */
+
+async function fetchJson(url, timeoutMs = 4000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal, headers: { 'User-Agent': 'a2a-cli' } });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function fetchText(url, timeoutMs = 4000) {
+  const j = await fetchJson(url, timeoutMs);
+  return j;
+}
+
+/**
+ * 执行一次更新检查。返回提示数组 [{area, text}]；网络不可达时返回空数组。
+ */
+async function checkUpdates(config) {
+  const notices = [];
+  const cmp = (a, b) => {
+    // 简单 semver 比较：x.y.z
+    const pa = String(a || '').split('.').map(Number);
+    const pb = String(b || '').split('.').map(Number);
+    for (let i = 0; i < 3; i++) {
+      const x = pa[i] || 0;
+      const y = pb[i] || 0;
+      if (x !== y) return x > y ? 1 : -1;
+    }
+    return 0;
+  };
+
+  // 1) CLI：npm registry 最新版 vs 本地
+  if (VERSION) {
+    const pkg = await fetchJson(`https://registry.npmjs.org/${NPM_PACKAGE}/latest`);
+    if (pkg && pkg.version && cmp(pkg.version, VERSION) > 0) {
+      notices.push({
+        area: 'CLI',
+        text: `CLI 有新版本：当前 v${VERSION} → 最新 v${pkg.version}（更新：a2a self-update，或 npm install -g ${NPM_PACKAGE}@latest）`,
+      });
+    }
+  }
+
+  // 2) Skills：GitHub raw 最新 VERSION
+  const skillsVer = await fetchText(`https://raw.githubusercontent.com/${REPO}/main/skills/a2a/VERSION`);
+  if (skillsVer && typeof skillsVer === 'string' && skillsVer.trim()) {
+    notices.push({
+      area: 'Skills',
+      text: `Skills 最新版本：v${skillsVer.trim()}（更新：git pull 仓库后重新拷贝 skills/a2a/ 到对应位置，见 INSTALL.md）`,
+    });
+  } else {
+    const skillsJson = await fetchJson(`https://raw.githubusercontent.com/${REPO}/main/skills/a2a/package.json`);
+    if (skillsJson && skillsJson.version) {
+      notices.push({
+        area: 'Skills',
+        text: `Skills 最新版本：v${skillsJson.version}（更新：git pull 仓库后重新拷贝 skills/a2a/，见 INSTALL.md）`,
+      });
+    }
+  }
+
+  // 3) 平台：当前实例版本（/api/v1/version）vs GitHub 最新（server/package.json）
+  if (config && config.url) {
+    const cur = await fetchJson(String(config.url).replace(/\/+$/, '') + '/api/v1/version');
+    const latest = await fetchJson(`https://raw.githubusercontent.com/${REPO}/main/server/package.json`);
+    if (cur && latest && cmp(latest.version, cur.version) > 0) {
+      notices.push({
+        area: '平台',
+        text: `平台有新版本：当前 v${cur.version} → 最新 v${latest.version}（更新：cd <仓库> && git pull && docker compose up -d --build）`,
+      });
+    }
+  }
+
+  return notices;
+}
+
+/** 输出更新检查结果；全部最新时输出一行确认 */
+function printUpdateResult(notices) {
+  console.log('');
+  console.log(hl('===== a2a 更新检查 ====='));
+  if (!notices.length) {
+    console.log('  全部组件已是最新版本 ✓');
+  } else {
+    for (const n of notices) {
+      console.log(paint(C.yellow, `  [${n.area}] `) + n.text);
+    }
+  }
+  console.log(hl('========================='));
+}
+
+/** `a2a update-check`：强制检查 */
+async function cmdUpdateCheck(ctx) {
+  const notices = await checkUpdates(ctx.config);
+  printUpdateResult(notices);
+}
+
+/** `a2a self-update`：更新 CLI 自身（人类确认后执行） */
+async function cmdSelfUpdate() {
+  if (!VERSION) {
+    console.log(paint(C.yellow, '当前为单文件拷贝安装（无版本信息），请改用 npm 安装：npm install -g ' + NPM_PACKAGE));
+    return;
+  }
+  console.log(`正在从 npm 更新 ${NPM_PACKAGE}（当前 v${VERSION}）...`);
+  try {
+    execSync(`npm install -g ${NPM_PACKAGE}@latest`, { stdio: 'inherit' });
+    console.log(paint(C.green, 'CLI 更新完成 ✅ 新版本已生效（重新打开终端或运行 a2a help 确认）'));
+  } catch (e) {
+    console.log(paint(C.red, '更新失败，请手动执行：npm install -g ' + NPM_PACKAGE + '@latest'));
+    process.exitCode = 1;
+  }
+}
+
+/* ------------------------------------------------------------------------- *
  * 命令实现
  * ------------------------------------------------------------------------- */
 
@@ -735,6 +866,21 @@ async function cmdCheckin(opts, ctx) {
     console.log(paint(C.yellow, '→ 有待办任务：用 a2a task list --status todo 查看'));
   }
   console.log(hl('======================================='));
+
+  // 更新检查（≤24h 一次；网络不可达静默跳过；有更新才提示）
+  const lastCheck = state.lastUpdateCheckAt || 0;
+  if (Date.now() - lastCheck > 24 * 3600 * 1000) {
+    try {
+      const notices = await checkUpdates(config);
+      state.lastUpdateCheckAt = Date.now();
+      saveState(dir, state);
+      if (notices.length) {
+        console.log('');
+        console.log(paint(C.yellow, '→ 检测到可用更新（运行 a2a update-check 查看详情）：'));
+        for (const n of notices) console.log(`    [${n.area}] ${n.text}`);
+      }
+    } catch (e) { /* 静默 */ }
+  }
 }
 
 async function cmdSend(opts, ctx) {
@@ -977,6 +1123,8 @@ function printHelp() {
     ['sync', '双向镜像同步本地 doc 目录 ↔ 平台'],
     ['memory', '记忆（get / set）'],
     ['heartbeat', '心跳'],
+    ['update-check', '检查各组件是否有新版本'],
+    ['self-update', '更新 CLI 自身（npm）'],
     ['help', '显示本帮助'],
   ];
   for (const [c, d] of cmds) console.log(`  ${paint(C.cyan, c.padEnd(10))} ${d}`);
@@ -1006,6 +1154,7 @@ function printHelp() {
   console.log('  a2a memory get');
   console.log('  a2a memory set <file>');
   console.log('  a2a heartbeat [--status S] [--note N]');
+  console.log('  a2a update-check / a2a self-update   # 检查更新 / 更新 CLI 自身');
 
   console.log('');
   console.log(paint(C.bold, '示例:'));
@@ -1066,6 +1215,12 @@ async function main() {
       break;
     case 'sync':
       await doSync(ctx.config, ctx.dir);
+      break;
+    case 'update-check':
+      await cmdUpdateCheck(ctx);
+      break;
+    case 'self-update':
+      await cmdSelfUpdate();
       break;
     case 'heartbeat':
       await cmdHeartbeat(opts, ctx);

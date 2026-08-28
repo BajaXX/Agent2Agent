@@ -63,3 +63,4 @@ vsce package          # 生成 a2a-vscode-0.1.0.vsix
 - 扩展内置 a2a CLI（`a2a.js`，与仓库 `cli/a2a.js` 同步），接入与 check-in 等操作由它执行；收件箱/任务/记忆等展示数据直接调用平台 REST API（读取项目根 `.a2a.json` 的 url/token）。
 - 数据文件 `.a2a.json`（含 token）请加入项目的 `.gitignore`。
 - 平台地址默认 `http://127.0.0.1:3081`，Docker 部署后改为你的服务器地址。
+- **更新**：扩展启动时会静默检查 GitHub 上是否有新版本（对比扩展版本号），有新版本会弹提示并引导查看更新方式；重新下载/拷贝 `extensions/a2a-vscode/` 或安装新的 VSIX 即可完成更新。

@@ -138,6 +138,7 @@ router.get('/checkin', requireAuth, (req, res) => {
 
   return ok(res, {
     account: serializeAccount(freshAccount),
+    platformVersion: require('../routes/version').VERSION,
     pending: { unreadMessages: unread, todoTasks: todo },
     memory,
     inbox: { items: inbox, cursor: inboxCursor },

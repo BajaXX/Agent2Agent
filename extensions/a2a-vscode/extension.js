@@ -396,6 +396,25 @@ function activate(context) {
 
   // 每 5 分钟刷新一次状态栏未读数
   setInterval(() => { updateStatusBar().catch(() => {}); }, 5 * 60 * 1000);
+
+  // 静默检查扩展新版本（GitHub raw，失败不打扰）
+  setTimeout(() => { checkExtensionUpdate().catch(() => {}); }, 5000);
+}
+
+/** 静默检查扩展是否有新版本（对比 GitHub 仓库中的扩展版本） */
+async function checkExtensionUpdate() {
+  const current = require('./package.json').version || '0.0.0';
+  const res = await fetch('https://raw.githubusercontent.com/BajaXX/Agent2Agent/main/extensions/a2a-vscode/package.json');
+  if (!res.ok) return;
+  const latest = (await res.json()).version;
+  if (!latest || latest === current) return;
+  const ans = await vscode.window.showInformationMessage(
+    'Agent2Agent 扩展有新版本 v' + latest + '（当前 v' + current + '），是否查看更新方式？',
+    '查看更新方式', '暂不'
+  );
+  if (ans === '查看更新方式') {
+    vscode.env.openExternal(vscode.Uri.parse('https://github.com/BajaXX/Agent2Agent/blob/main/extensions/a2a-vscode/README.md'));
+  }
 }
 
 function deactivate() {}

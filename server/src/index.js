@@ -45,6 +45,7 @@ app.use('/api/v1', require('./routes/documents'));
 app.use('/api/v1', require('./routes/memory'));
 app.use('/api/v1', require('./routes/summary'));
 app.use('/api/v1', require('./routes/events'));
+app.use('/api/v1', require('./routes/version'));
 
 // 未知 API 路径 → 404 JSON
 app.use('/api', (req, res) => {
