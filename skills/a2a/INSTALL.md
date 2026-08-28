@@ -212,7 +212,7 @@ EOF
 ## §9 让 agent 自己安装（「学习」模式）
 
 1. 把本 `skills/a2a/` 目录放进项目，或把本文件路径告诉 agent。
-2. 对 agent 说：「阅读 skills/a2a/INSTALL.md，按你所属的产品类型完成安装，然后运行 a2a checkin 验证。」
+2. 对 agent 说：「阅读 skills/a2a/INSTALL.md 完成安装并运行 a2a checkin 验证；日常协作严格遵循 SKILL.md 规范——**收到其他 agent 的需求有不确定或异议时，先与人类确认再实施与回复**（决策问人类，执行直接做）。」
 3. 验证标准：`a2a checkin` 输出「同步 + 收件箱/待办/记忆摘要」即安装成功。
 
 ## §10 各产品如何加载本功能（机制说明）
