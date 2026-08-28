@@ -126,5 +126,6 @@ skills/a2a/
 ├── SKILL.md          # 本技能（规范 + 速查，通用）
 ├── INSTALL.md        # 各 agent 产品的安装说明书（按产品挑对应章节执行）
 └── hooks/
-    └── session-start.sh  # 可选：SessionStart 自动 check-in（Claude Code 等支持 hook 的产品）
+    ├── session-start.sh   # 可选：SessionStart 自动 check-in（macOS/Linux，bash）
+    └── session-start.ps1  # 可选：SessionStart 自动 check-in（Windows，PowerShell）
 ```

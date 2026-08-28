@@ -132,6 +132,8 @@ cp -r skills/a2a ~/.claude/skills/a2a
 
 **可选：SessionStart 自动 check-in（推荐）**。编辑 `~/.claude/settings.json`：
 
+**macOS / Linux**（脚本 `hooks/session-start.sh`）：
+
 ```json
 {
   "hooks": {
@@ -142,7 +144,19 @@ cp -r skills/a2a ~/.claude/skills/a2a
 }
 ```
 
-会话启动时若项目已接入（存在 `.a2a.json`），自动执行 `a2a checkin` 输出摘要；未接入则静默跳过。
+**Windows**（脚本 `hooks/session-start.ps1`，PowerShell 版，Win 自带 PS 5.1 即可运行）：
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [ { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File C:\\Users\\<你的用户名>\\.claude\\skills\\a2a\\hooks\\session-start.ps1" } ] }
+    ]
+  }
+}
+```
+
+> 两个脚本逻辑一致：会话启动时若项目已接入（存在 `.a2a.json`），自动执行 `a2a checkin` 输出摘要；未接入或平台离线则静默跳过，绝不阻断会话。Windows 需安装 Node.js ≥ 20 且 `node` 在 PATH 中。
 
 ## §3 DeepSeek Harness（dsh）
 
