@@ -878,30 +878,44 @@ async function cmdCheckin(opts, ctx) {
   } else if ((mem.version || 0) < 2) {
     console.log(paint(C.dim, '  （提示：建议每次会话结束前用 a2a memory set 更新记忆，保持 v' + (mem.version || 0) + ' → 演进）'));
   }
-  console.log(`未读消息: ${pending.unreadMessages ?? inboxItems.length} 条   待办任务: ${pending.todoTasks ?? taskItems.length} 个`);
+  // 待我回复的消息（发给我的、needsReply、未 resolved）—— 别人等待我回复
+  const needMyReply = inboxItems.filter((m) => m.needsReply && m.status !== 'resolved');
+  const unreadNow = (pending.unreadMessages ?? 0);
+  console.log(`未读消息: ${unreadNow} 条   待你回复: ${needMyReply.length} 条   待办任务: ${pending.todoTasks ?? taskItems.length} 个`);
 
   console.log('');
-  console.log(paint(C.bold, '未读消息:'));
+  console.log(paint(C.bold, '收件箱消息:'));
   if (inboxItems.length === 0) {
-    console.log('  （无）');
+    console.log('  （无新消息）');
   } else {
-    inboxItems.forEach((m, i) => console.log(`  [${i + 1}] ${m.subject || '(无主题)'} — 来自 ${m.from || '?'}`));
+    inboxItems.forEach((m, i) => {
+      const needReply = m.needsReply && m.status !== 'resolved' ? ' ' + paint(C.yellow, '[需你回复]') : '';
+      console.log(`  [${i + 1}] ${m.subject || '(无主题)'} — 来自 ${m.from || '?'}${needReply}`);
+    });
   }
 
   console.log('');
-  console.log(paint(C.bold, '待办任务:'));
-  if (taskItems.length === 0) {
+  console.log(paint(C.bold, '我的任务（todo / doing / blocked）:'));
+  const myTasks = toArray(await api(config, 'GET', '/tasks', { query: { account: ctx.config.accountId } }))
+    .filter((t) => t.status !== 'done');
+  if (myTasks.length === 0) {
     console.log('  （无）');
   } else {
-    taskItems.forEach((t, i) => console.log(`  [${i + 1}] ${t.title || '(无标题)'}（${t.status || '?'}）`));
+    myTasks.forEach((t, i) => {
+      const stayH = t.updatedAt ? Math.floor((Date.now() - t.updatedAt) / 3600000) : 0;
+      const stay = stayH > 24
+        ? ' ' + paint(C.yellow, `（滞留 ${Math.floor(stayH / 24)}d${stayH % 24}h：若等待他人/人类介入请 a2a task update 标 blocked 并说明原因）`)
+        : (stayH > 4 ? `（已 ${stayH}h）` : '');
+      console.log(`  [${i + 1}] ${t.title || '(无标题)'}（${t.status || '?'}）${t.assigneeId ? '→ ' + t.assigneeId : ''}${stay}`);
+    });
   }
 
   console.log('');
-  if ((pending.unreadMessages ?? inboxItems.length) > 0) {
-    console.log(paint(C.yellow, '→ 有未读消息：用 a2a inbox --unread 查看'));
+  if (needMyReply.length > 0) {
+    console.log(paint(C.yellow, `→ 有 ${needMyReply.length} 条消息等待你回复：用 a2a inbox 查看后 a2a reply --msg ID --body "..."，处理完 a2a mark --msg ID --status resolved`));
   }
-  if ((pending.todoTasks ?? taskItems.length) > 0) {
-    console.log(paint(C.yellow, '→ 有待办任务：用 a2a task list --status todo 查看'));
+  if ((pending.todoTasks ?? 0) > 0 || myTasks.length > 0) {
+    console.log(paint(C.yellow, '→ 推进任务：a2a task list 查看 → 完成 a2a task update --id ID --status done --note 说明'));
   }
   console.log(hl('======================================='));
 
@@ -950,10 +964,17 @@ async function cmdInbox(opts, ctx, dir) {
     console.log('（无消息）');
     return;
   }
-  const headers = dir === 'in' ? ['ID', '编号', '来自', '主题', '状态', '时间'] : ['ID', '编号', '发给', '主题', '状态', '时间'];
+  // 方向正确的提醒标记：in = 发给我的（needsReply 未解决 → 需你回复）；out = 我发出的（未解决 → 等待对方回复）
+  const headers = dir === 'in'
+    ? ['ID', '编号', '来自', '主题', '状态', '提醒', '时间']
+    : ['ID', '编号', '发给', '主题', '状态', '提醒', '时间'];
   const rows = items.map((m, i) => {
     const peer = dir === 'in' ? m.from : m.to;
-    return [m.id || '-', String(i + 1), peer || '-', m.subject || '-', m.status || '-', fmtTime(m.createdAt)];
+    let flag = '';
+    if (m.needsReply && m.status !== 'resolved') {
+      flag = dir === 'in' ? paint(C.yellow, '需你回复') : paint(C.dim, '等待回复');
+    }
+    return [m.id || '-', String(i + 1), peer || '-', m.subject || '-', m.status || '-', flag || '-', fmtTime(m.createdAt)];
   });
   console.log(renderTable(headers, rows));
 }

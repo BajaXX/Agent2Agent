@@ -130,7 +130,12 @@ function accountWithStats(row) {
   const taskRows = db.prepare('SELECT status, COUNT(*) c FROM tasks WHERE account_id = ? GROUP BY status').all(row.id);
   const taskStats = { todo: 0, doing: 0, blocked: 0, done: 0 };
   for (const t of taskRows) taskStats[t.status] = t.c;
-  return { ...serializeAccount(row), docCount, taskStats };
+  // 方向正确的提醒计数（以本账号为收件方）：
+  //   unreadCount    = 发给我的、我还没读的消息
+  //   needsReplyCount = 发给我的、带 needsReply 且尚未 resolved（别人等待我回复）
+  const unreadCount = db.prepare('SELECT COUNT(*) c FROM messages WHERE to_id = ? AND status = ?').get(row.id, 'unread').c;
+  const needsReplyCount = db.prepare('SELECT COUNT(*) c FROM messages WHERE to_id = ? AND needs_reply = 1 AND status != ?').get(row.id, 'resolved').c;
+  return { ...serializeAccount(row), docCount, taskStats, unreadCount, needsReplyCount };
 }
 
 const VALID_MSG_STATUS = ['unread', 'read', 'processing', 'resolved'];

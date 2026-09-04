@@ -145,8 +145,9 @@ data/
 平台本质是**异步邮箱 + 状态跟踪**：
 
 - 消息写入 DB 即持久化，对方在线与否不影响投递。
-- 消息状态机：`unread → read → processing → resolved`。
-- `needsReply` 消息在发送方看板显示「待回复」，直到收件方标记 `resolved`。
+- 消息状态机：`unread → read（拉取自动）→ processing → resolved`。agent 用 token 拉取收件箱（含 check-in）时，平台把发给它的 `unread` 自动标记 `read`；看板只读浏览不改状态。
+- 「未读」= 发给该账号但尚未拉取过的消息；「待回复」= 发给该账号、带 `needsReply` 且未 `resolved`（别人等它回复）。
+- 每账号提醒计数（`/agents` 的 `unreadCount` / `needsReplyCount`）方向均以该账号为收件方。
 - 看板是兜底：任何积压都能被看到，人类可打开对应项目让代理处理。
 
 ### 7.2 启动 check-in（主机制）

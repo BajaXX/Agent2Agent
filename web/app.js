@@ -242,13 +242,21 @@ function renderAgentList() {
     const ts = agent.taskStats || {};
     const doing = ts.doing || 0;
     const todo = ts.todo || 0;
+    // 快捷提醒（方向正确）：unread = 发给我的未读；needsReply = 别人等我回复
+    const unread = agent.unreadCount || 0;
+    const needReply = agent.needsReplyCount || 0;
+    const badgeHtml =
+      (unread > 0 ? '<span class="badge badge-red" title="发给我的未读消息">' + unread + '</span>' : '') +
+      (needReply > 0 ? '<span class="badge badge-amber" title="别人等待我回复">' + needReply + '</span>' : '');
     item.innerHTML =
       '<div class="agent-row">' +
         '<span class="dot ' + (agent.online ? 'on' : 'off') + '"></span>' +
         '<span class="agent-color" style="background:' + color + '"></span>' +
         '<div class="agent-main">' +
           '<div class="agent-name">' + esc(agent.name) +
-            (agent.tool ? ' <span class="tool-tag">' + esc(agent.tool) + '</span>' : '') + '</div>' +
+            (agent.tool ? ' <span class="tool-tag">' + esc(agent.tool) + '</span>' : '') +
+            '<span class="agent-badges">' + badgeHtml + '</span>' +
+          '</div>' +
           '<div class="agent-sub">' + esc(agentStatusText(agent)) +
             ((doing || todo) ? ' · <b style="color:' + color + '">' + (doing + todo) + '</b> 进行中' : '') +
           '</div>' +
@@ -413,6 +421,8 @@ function renderAgentHead() {
       '</div>' +
     '</div>';
   html += '<div class="ah-stats">' +
+    (a.unreadCount > 0 ? `<span class="ah-stat ah-warn">未读 <b>${a.unreadCount}</b></span>` : '') +
+    (a.needsReplyCount > 0 ? `<span class="ah-stat ah-alert">待你回复 <b>${a.needsReplyCount}</b></span>` : '') +
     `<span class="ah-stat"><i style="background:${STATUS_COLOR.todo}"></i>待办 <b>${ts.todo || 0}</b></span>` +
     `<span class="ah-stat"><i style="background:${STATUS_COLOR.doing}"></i>进行中 <b>${ts.doing || 0}</b></span>` +
     `<span class="ah-stat"><i style="background:${STATUS_COLOR.blocked}"></i>阻塞 <b>${ts.blocked || 0}</b></span>` +

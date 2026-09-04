@@ -400,3 +400,16 @@ body {
 .doc-desc { color: var(--muted); font-size: 12px; flex: 0 1 auto; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .doc-size { color: var(--muted); font-size: 12px; flex: 0 0 auto; }
 .doc-row .time { color: var(--muted); font-size: 12px; flex: 0 0 auto; }
+
+/* ================= v0.3.1：Agent 快捷提醒徽标 ================= */
+.agent-badges { display: inline-flex; gap: 4px; margin-left: 6px; vertical-align: 2px; }
+.badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 17px; height: 17px; padding: 0 5px;
+  border-radius: 999px; font-size: 11px; font-weight: 700; color: #fff;
+}
+.badge-red { background: var(--red); }
+.badge-amber { background: var(--amber); }
+.ah-warn b { color: #2563eb; }
+.ah-alert b { color: var(--red); }
+.ah-alert { border-color: #fecaca; background: #fef2f2; }

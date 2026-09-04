@@ -124,6 +124,16 @@ router.get('/checkin', requireAuth, (req, res) => {
   const todo = db.prepare('SELECT COUNT(*) c FROM tasks WHERE account_id = ? AND status IN (?,?)').get(account.id, 'todo', 'blocked').c;
 
   const inboxRows = db.prepare('SELECT * FROM messages WHERE to_id = ? AND created_at > ? ORDER BY seq ASC').all(account.id, since);
+
+  // 自动已读：check-in 拉取收件箱即视为已读（unread → read），未读只表示「还没拉取过」
+  const newlyRead = inboxRows.filter((m) => m.status === 'unread');
+  if (newlyRead.length) {
+    const ts = now();
+    const upd = db.prepare('UPDATE messages SET status = ?, read_at = ? WHERE id = ? AND status = ?');
+    db.transaction(() => { for (const m of newlyRead) upd.run('read', ts, m.id, 'unread'); })();
+    for (const m of newlyRead) { m.status = 'read'; m.read_at = ts; }
+  }
+
   const inboxCursor = inboxRows.length ? Math.max(...inboxRows.map((m) => m.created_at), since) : since;
   const inbox = inboxRows.map(serializeMessage);
 

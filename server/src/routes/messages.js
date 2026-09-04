@@ -89,6 +89,22 @@ router.get('/messages', optionalAuth, (req, res) => {
 
   const rows = db.prepare(sql).all(...params);
   const cursor = rows.length ? Math.max(...rows.map((m) => m.created_at), since) : since;
+
+  // 自动已读：agent 用本人 token 拉取收件箱时，把本次返回的、发给自己的 unread 消息标记 read。
+  // （看板用 ?account= 浏览不带 token，不改变任何状态 —— 只读旁观）
+  if (req.account && dir !== 'out') {
+    const mine = rows.filter((m) => m.to_id === req.account.id && m.status === 'unread');
+    if (mine.length) {
+      const ts = now();
+      const upd = db.prepare('UPDATE messages SET status = ?, read_at = ? WHERE id = ? AND status = ?');
+      db.transaction(() => {
+        for (const m of mine) upd.run('read', ts, m.id, 'unread');
+      })();
+      // 返回给调用方前把内存行同步为已读（API 响应反映最新状态）
+      for (const m of mine) { m.status = 'read'; m.read_at = ts; }
+    }
+  }
+
   return ok(res, { items: rows.map(serializeMessage), cursor });
 });
 
