@@ -676,6 +676,138 @@ async function cmdSelfUpdate() {
 }
 
 /* ------------------------------------------------------------------------- *
+ * Skills 更新（update-skills / update）
+ * 从 GitHub 下载最新 skills/a2a/ 到本地安装位置（探测常见位置，支持 --to 与 --yes）
+ * ------------------------------------------------------------------------- */
+
+const SKILLS_RAW_BASE = (process.env.A2A_SKILLS_URL || '').replace(/\/+$/, '') ||
+  'https://raw.githubusercontent.com/BajaXX/Agent2Agent/main/skills/a2a';
+
+const SKILL_FILES = [
+  'SKILL.md', 'INSTALL.md', 'VERSION',
+  'hooks/session-start.sh', 'hooks/session-start.ps1',
+  'rules/cursor.mdc',
+];
+
+/** 下载单个文件到目标（返回是否成功） */
+async function downloadTo(relPath, destDir) {
+  const url = `${SKILLS_RAW_BASE}/${relPath}`;
+  const res = await fetch(url, { headers: { 'User-Agent': 'a2a-cli' } });
+  if (!res.ok) throw new Error(`下载失败 ${relPath} (HTTP ${res.status})`);
+  const buf = Buffer.from(await res.arrayBuffer());
+  const dest = path.join(destDir, ...relPath.split('/'));
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.writeFileSync(dest, buf);
+  if (relPath.endsWith('.sh')) {
+    try { fs.chmodSync(dest, 0o755); } catch (e) { /* Windows 忽略 */ }
+  }
+  return dest;
+}
+
+/** 探测已安装的 skills 位置（存在才返回） */
+function detectSkillLocations() {
+  const home = process.env.HOME || process.env.USERPROFILE || '';
+  const found = [];
+  const claudeDir = path.join(home, '.claude', 'skills', 'a2a');
+  if (fs.existsSync(claudeDir)) found.push({ type: 'claude', dir: claudeDir, label: 'Claude Code skill' });
+  const cursorRules = path.join(home, '.cursor', 'rules');
+  if (fs.existsSync(cursorRules)) {
+    if (fs.existsSync(path.join(cursorRules, 'a2a.mdc')) || fs.existsSync(path.join(cursorRules, 'agent-platform.mdc')) || fs.existsSync(path.join(cursorRules, 'cursor.mdc'))) {
+      found.push({ type: 'cursor', dir: cursorRules, label: 'Cursor 规则' });
+    }
+  }
+  const windsurfRules = path.join(home, '.windsurf', 'rules');
+  if (fs.existsSync(path.join(windsurfRules, 'a2a.md'))) {
+    found.push({ type: 'windsurf', dir: windsurfRules, label: 'Windsurf 规则' });
+  }
+  return found;
+}
+
+/** `a2a update-skills`：更新已安装的 skills（Claude/…/--to 指定目录） */
+async function cmdUpdateSkills(opts) {
+  const autoYes = Boolean(opts.yes || opts['yes'] || opts.y);
+  const targets = [];
+
+  if (opts.to) {
+    const abs = path.resolve(process.cwd(), String(opts.to));
+    targets.push({ type: 'dir', dir: abs, label: `指定目录 ${abs}` });
+  } else {
+    targets.push(...detectSkillLocations());
+    if (!targets.length) {
+      console.log(paint(C.yellow, '未检测到已安装的 skills。可用：'));
+      console.log('  a2a update-skills --to <目录>   # 下载整个技能包到指定目录（如 ~/.claude/skills/a2a）');
+      console.log('  （Claude Code 安装到 ~/.claude/skills/a2a 后，之后可直接 a2a update-skills）');
+      return;
+    }
+  }
+
+  console.log(hl('===== a2a update-skills ====='));
+  for (const t of targets) console.log(`  将更新: [${t.label}]`);
+  if (!autoYes && process.stdin.isTTY) {
+    console.log('');
+    process.stdout.write('确认更新？(y/N) ');
+    const ans = await new Promise((resolve) => {
+      const rl = require('readline').createInterface({ input: process.stdin, output: process.stdout });
+      rl.question('', (a) => { rl.close(); resolve(a); });
+    });
+    if (!/^y/i.test(ans)) { console.log('已取消'); return; }
+  } else if (!autoYes && !process.stdin.isTTY) {
+    console.log(paint(C.yellow, '（非交互环境：加 --yes 跳过确认）'));
+    if (!process.env.A2A_AUTO_UPDATE) return;
+  }
+
+  let okCount = 0;
+  for (const t of targets) {
+    try {
+      if (t.type === 'cursor') {
+        // 规则目录：写入 a2a.mdc，删除旧文件名
+        const dest = await downloadTo('rules/cursor.mdc', t.dir);
+        const renamed = path.join(t.dir, 'a2a.mdc');
+        fs.renameSync(dest, renamed);
+        for (const old of ['agent-platform.mdc', 'cursor.mdc']) {
+          const p = path.join(t.dir, old);
+          if (fs.existsSync(p)) { try { fs.unlinkSync(p); } catch (e) { /* ignore */ } }
+        }
+        console.log(`  ✓ ${t.label} → ${renamed}`);
+      } else {
+        for (const rel of SKILL_FILES) await downloadTo(rel, t.dir);
+        console.log(`  ✓ ${t.label} → ${t.dir}（${SKILL_FILES.length} 个文件）`);
+      }
+      okCount++;
+    } catch (e) {
+      console.log(paint(C.red, `  ✗ ${t.label} 更新失败: ${e.message}`));
+    }
+  }
+  console.log(hl(`更新完成（成功 ${okCount}/${targets.length}）`));
+  if (okCount < targets.length) process.exitCode = 1;
+}
+
+/** `a2a update`：一键更新 CLI + Skills（平台由运维执行 docker 命令） */
+async function cmdUpdate(opts) {
+  console.log(hl('===== a2a update ====='));
+  if (VERSION) {
+    // 先检查 CLI 版本
+    const pkg = await fetchJson('https://registry.npmjs.org/' + NPM_PACKAGE + '/latest');
+    if (pkg && pkg.version && VERSION !== pkg.version) {
+      console.log(`[CLI] 当前 v${VERSION} → 最新 v${pkg.version}，正在更新...`);
+      try {
+        execSync(`npm install -g ${NPM_PACKAGE}@latest`, { stdio: 'inherit' });
+        console.log(paint(C.green, '[CLI] 更新完成 ✅'));
+      } catch (e) {
+        console.log(paint(C.red, `[CLI] 更新失败，请手动：npm install -g ${NPM_PACKAGE}@latest`));
+      }
+    } else {
+      console.log(`[CLI] 已是最新 v${VERSION} ✓`);
+    }
+  } else {
+    console.log(paint(C.yellow, '[CLI] 单文件安装无版本信息，建议：npm install -g ' + NPM_PACKAGE));
+  }
+  await cmdUpdateSkills({ yes: opts.yes || opts.y });
+  console.log('');
+  console.log('平台更新（在部署服务器执行）：cd <仓库> && git pull && docker compose up -d --build');
+}
+
+/* ------------------------------------------------------------------------- *
  * 命令实现
  * ------------------------------------------------------------------------- */
 
@@ -1226,6 +1358,8 @@ function printHelp() {
     ['memory', '记忆（get / set）'],
     ['heartbeat', '心跳'],
     ['update-check', '检查各组件是否有新版本'],
+    ['update', '一键更新 CLI + skills'],
+    ['update-skills', '更新已安装的 skills（--to 指定目录 / --yes 免确认）'],
     ['self-update', '更新 CLI 自身（npm）'],
     ['help', '显示本帮助'],
   ];
@@ -1288,7 +1422,32 @@ async function main() {
     return;
   }
 
-  const ctx = requireConfig(opts.config);
+  // 更新类命令不依赖项目配置（操作的是本地 CLI / skills）
+  if (cmd === 'self-update') {
+    await cmdSelfUpdate();
+    return;
+  }
+  if (cmd === 'update-skills') {
+    await cmdUpdateSkills(opts);
+    return;
+  }
+  if (cmd === 'update') {
+    await cmdUpdate(opts);
+    return;
+  }
+
+  let ctx = null;
+  try {
+    ctx = requireConfig(opts.config);
+  } catch (e) {
+    // update-check 允许无配置运行（仅检查 CLI / skills）；其余命令必须配置
+    if (cmd === 'update-check') {
+      await cmdUpdateCheck({ config: null });
+      return;
+    }
+    process.stderr.write(String(e.message || e) + '\n');
+    process.exit(1);
+  }
   const sub = pos[1];
 
   switch (cmd) {
@@ -1318,12 +1477,6 @@ async function main() {
       break;
     case 'sync':
       await doSync(ctx.config, ctx.dir);
-      break;
-    case 'update-check':
-      await cmdUpdateCheck(ctx);
-      break;
-    case 'self-update':
-      await cmdSelfUpdate();
       break;
     case 'heartbeat':
       await cmdHeartbeat(opts, ctx);

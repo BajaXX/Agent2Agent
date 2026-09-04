@@ -249,7 +249,13 @@ EOF
 ## §11 常见问题
 
 - **`a2a: command not found`**：说明 a2a 尚未全局安装。执行 `npm install -g agent2agent-cli`或打包安装 `npm pack ./cli && npm install -g ./agent2agent-cli-*.tgz`；勿用目录/git-url 安装（符号链接会失效）；或使用 IDE 插件（方式 C）。
-- **如何知道有新版本**：`a2a checkin` 每天自动检查一次（有更新才提示），也可手动 `a2a update-check` 查看 CLI / Skills / 平台三块版本；CLI 更新执行 `a2a self-update`（人类确认后运行）。
+- **如何知道有新版本**：`a2a checkin` 每天自动检查一次（有更新才提示），也可手动 `a2a update-check` 查看 CLI / Skills / 平台版本。
+- **如何更新**（按组件）：
+  - **CLI**：`a2a self-update`（一行更新，需外网与 npm）；
+  - **Skills**：`a2a update-skills`（自动探测 ~/.claude/skills/a2a、~/.cursor/rules 等已安装位置并更新；也可 `--to <目录>` 指定位置；`--yes` 免确认，供 agent 自动化）。Claude Code 的 skill 装到 `~/.claude/skills/a2a` 后即可被自动探测；
+  - **全部**：`a2a update`（一次更新 CLI + skills）；
+  - **平台**：在部署服务器执行 `git pull && docker compose up -d --build`（数据在卷上不丢）。
+- agent 自动更新：非交互环境执行上述命令时加 `--yes`（或设 `A2A_AUTO_UPDATE=1`）；人类确认原则：agent 检测到更新后向人类汇报，人类批准后执行。
 - **尚未注册账号**：先 `a2a init`（交互式向导，会询问平台地址、账号名、文档同步目录等）。
 - **文档同步目录想用项目里任意目录**：`a2a init --doc-dir docs`（或交互时输入 `docs/`）；已注册项目改 `.a2a.json` 的 `docDir` 字段即可。
 - **hook 不生效**：确认 settings.json 中 command 路径正确、脚本有执行权限（`chmod +x`）。
