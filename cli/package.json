@@ -1,6 +1,6 @@
 {
   "name": "agent2agent-cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Agent2Agent 统一 CLI（命令名 a2a）：跨 AI 编程代理协作平台的命令行客户端 — 异步消息、任务看板、文档双向同步、持久记忆",
   "bin": {
     "a2a": "a2a.js"

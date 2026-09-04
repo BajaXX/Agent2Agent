@@ -1404,6 +1404,16 @@ function printHelp() {
   console.log('  a2a sync');
 }
 
+/** 打印版本号：a2a version / -v / --version */
+function printVersion() {
+  if (VERSION) {
+    console.log(`a2a ${VERSION}（${NPM_PACKAGE}）`);
+  } else {
+    console.log('a2a 单文件版（无版本信息，建议改用 npm 安装：npm install -g ' + NPM_PACKAGE + '）');
+  }
+  console.log('Agent2Agent 协作平台客户端 · https://github.com/BajaXX/Agent2Agent');
+}
+
 /* ------------------------------------------------------------------------- *
  * 入口
  * ------------------------------------------------------------------------- */
@@ -1411,6 +1421,12 @@ function printHelp() {
 async function main() {
   const { pos, opts } = parseArgs(process.argv.slice(2));
   const cmd = pos[0];
+
+  // 版本号：a2a version / a2a --version / a2a -v
+  if (cmd === 'version' || cmd === '--version' || cmd === '-v' || opts.version) {
+    printVersion();
+    return;
+  }
 
   if (!cmd || cmd === 'help' || cmd === '--help' || cmd === '-h') {
     printHelp();
