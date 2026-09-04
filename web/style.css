@@ -286,3 +286,117 @@ body {
   .memory-layout { grid-template-columns: 1fr; }
   .sidebar { width: 240px; flex-basis: 240px; }
 }
+
+/* ================= v0.3 布局：全局卡片 + Agent 视图 ================= */
+
+/* 侧栏：全局看板卡片 */
+.global-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, #eef1fe 0%, #f8f9ff 100%);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  cursor: pointer;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.global-card:hover { box-shadow: var(--shadow); border-color: var(--accent); }
+.global-card.active { border-color: var(--accent); box-shadow: var(--shadow); }
+.global-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.global-ico { font-size: 18px; }
+.global-title { font-weight: 700; font-size: 15px; color: var(--accent); }
+.global-mini-stats { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; }
+.gms-row { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.gms-row b { color: var(--text); font-size: 13px; }
+.gms-dots { display: inline-flex; gap: 4px; margin-left: 2px; }
+.gms-dots i { width: 8px; height: 8px; border-radius: 3px; display: inline-block; }
+
+/* Agent 列表项选中态与色条 */
+.agent-item { position: relative; }
+.agent-item.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.agent-color { width: 4px; align-self: stretch; border-radius: 2px; flex: 0 0 4px; }
+.agent-row { gap: 8px; }
+
+/* 全局视图：统计条 */
+.stats-bar { margin-bottom: 12px; }
+.stat-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 10px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 5px 12px; border-radius: 999px; font-size: 12.5px; color: var(--muted);
+}
+.chip b { color: var(--text); font-size: 14px; }
+.chip .sq { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.chip.sep { border-left: 2px solid var(--border); }
+
+/* 各账号任务分布 */
+.agent-task-dist {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 16px; margin-bottom: 4px;
+}
+.atd-title { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.atd-row { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+.atd-row:last-child { margin-bottom: 0; }
+.atd-name { width: 130px; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.atd-bar { flex: 1; display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: #eef1f5; }
+.atd-bar i { display: block; height: 100%; }
+.atd-num { width: 34px; text-align: right; font-size: 12px; color: var(--muted); }
+
+/* Agent 视图头部 */
+.agent-head {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px 18px; margin-bottom: 16px;
+}
+.ah-row { display: flex; gap: 14px; align-items: flex-start; }
+.ah-color {
+  width: 52px; height: 52px; border-radius: 14px; flex: 0 0 52px;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 24px; font-weight: 700;
+}
+.ah-main { flex: 1; min-width: 0; }
+.ah-name { font-size: 19px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.ah-status { font-size: 12.5px; color: var(--muted); font-weight: 400; }
+.ah-desc { color: var(--muted); font-size: 13px; margin-top: 4px; word-break: break-word; }
+.ah-tags { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+.cap {
+  font-size: 11.5px; color: var(--accent); background: var(--accent-soft);
+  padding: 2px 9px; border-radius: 999px;
+}
+.tech { font-size: 11.5px; color: #0f766e; background: #ccfbf1; padding: 2px 9px; border-radius: 999px; }
+.ah-stats { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.ah-stat {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--border); background: var(--bg);
+  padding: 4px 12px; border-radius: 999px; font-size: 12.5px; color: var(--muted);
+}
+.ah-stat i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+.ah-stat b { color: var(--text); }
+
+/* 消息列表容器（filters 下方） */
+.msg-list { display: flex; flex-direction: column; gap: 6px; }
+.msg-body.clamp {
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden; white-space: pre-line;
+}
+.doc-ref {
+  color: var(--accent); background: var(--accent-soft);
+  border-radius: 5px; padding: 0 4px; font-size: 0.95em; font-family: "SFMono-Regular", Consolas, monospace;
+  word-break: break-all;
+}
+
+/* 文档列表 */
+.docs .doc-list, .doc-list { display: flex; flex-direction: column; }
+.doc-row {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 14px; margin-bottom: 6px;
+}
+.doc-name {
+  background: none; border: none; cursor: pointer; color: var(--accent);
+  font-size: 13.5px; font-weight: 600; text-align: left;
+  font-family: "SFMono-Regular", Consolas, "PingFang SC", monospace;
+  word-break: break-all; flex: 1;
+}
+.doc-name:hover { text-decoration: underline; }
+.doc-desc { color: var(--muted); font-size: 12px; flex: 0 1 auto; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doc-size { color: var(--muted); font-size: 12px; flex: 0 0 auto; }
+.doc-row .time { color: var(--muted); font-size: 12px; flex: 0 0 auto; }

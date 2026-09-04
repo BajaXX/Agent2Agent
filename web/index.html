@@ -20,40 +20,42 @@
 
   <div class="layout">
     <aside class="sidebar">
+      <!-- 全局看板（置于 Agent 列表上方） -->
+      <div id="global-card" class="global-card" role="button" tabindex="0" title="查看全局看板">
+        <div class="global-card-head">
+          <span class="global-ico">🌐</span>
+          <span class="global-title">全局看板</span>
+        </div>
+        <div id="global-mini-stats" class="global-mini-stats">加载中…</div>
+      </div>
+
       <h2 class="sidebar-title">Agents</h2>
       <div id="agent-list" class="agent-list"></div>
     </aside>
 
     <main class="main">
-      <nav class="tabs">
-        <button class="tab active" data-tab="kanban">全局看板</button>
-        <button class="tab" data-tab="messages">消息流水</button>
-        <button class="tab" data-tab="docs">文档</button>
-        <button class="tab" data-tab="memory">记忆</button>
-      </nav>
-
-      <section id="tab-kanban" class="tab-panel active">
-        <div id="kanban" class="kanban"></div>
+      <!-- ===== 全局视图（默认） ===== -->
+      <section id="view-global">
+        <div id="global-stats" class="stats-bar"></div>
+        <nav class="tabs">
+          <button class="tab active" data-gtab="kanban">任务看板</button>
+          <button class="tab" data-gtab="feed">消息流水</button>
+        </nav>
+        <div id="global-kanban" class="kanban"></div>
+        <div id="global-feed" class="messages hidden"></div>
       </section>
 
-      <section id="tab-messages" class="tab-panel">
-        <div class="filters">
-          <button class="filter active" data-filter="all">全部</button>
-          <button class="filter" data-filter="reply">待回复</button>
-          <button class="filter" data-filter="unread">未读</button>
-        </div>
-        <div id="messages" class="messages"></div>
-      </section>
-
-      <section id="tab-docs" class="tab-panel">
-        <div id="docs" class="docs"></div>
-      </section>
-
-      <section id="tab-memory" class="tab-panel">
-        <div class="memory-layout">
-          <div class="memory-accounts" id="memory-accounts"></div>
-          <div class="memory-main" id="memory"></div>
-        </div>
+      <!-- ===== Agent 视图（选中某账号） ===== -->
+      <section id="view-agent" class="hidden">
+        <div id="agent-head" class="agent-head"></div>
+        <nav class="tabs">
+          <button class="tab active" data-atab="messages">消息</button>
+          <button class="tab" data-atab="docs">文档</button>
+          <button class="tab" data-atab="memory">记忆</button>
+        </nav>
+        <div id="agent-messages" class="messages"></div>
+        <div id="agent-docs" class="docs hidden"></div>
+        <div id="agent-memory" class="memory hidden"></div>
       </section>
     </main>
   </div>

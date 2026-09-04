@@ -30,6 +30,13 @@ function isTextMime(mime, name) {
   return (typeof mime === 'string' && mime.startsWith('text/')) || TEXT_EXT.has(ext);
 }
 
+/** 判断上传内容是否标记 [PRIVATE]（首行；二进制内容跳过检测） */
+function isPrivateBuffer(buffer) {
+  const head = buffer.slice(0, 512).toString('utf8');
+  if (head.includes('\u0000')) return false;
+  return /^\uFEFF?\[PRIVATE\]/.test(head.replace(/^\s*\r?\n/, ''));
+}
+
 /** 某账号下按文件名找当前文档 */
 function findDocByName(accountId, name) {
   return getDb().prepare('SELECT * FROM documents WHERE account_id = ? AND name = ? AND deleted = 0').get(accountId, name);
@@ -193,10 +200,16 @@ router.post('/sync', requireAuth, upload.array('files', 100), (req, res) => {
   // 2) 推送文件（LWW 冲突处理；文件名保留相对路径结构）
   const pushed = [];
   const conflicts = [];
+  const skipped = []; // [PRIVATE] 被拦截的文件
   const files = req.files || [];
   for (const file of files) {
     const name = storage.sanitizeRelPath(file.originalname || 'file');
     const buffer = file.buffer;
+    // [PRIVATE] 防御：首行为 [PRIVATE] 的文件一律拒绝同步（CLI 已过滤，此处兜底直传场景）
+    if (isPrivateBuffer(buffer)) {
+      skipped.push(name);
+      continue;
+    }
     const sha = storage.sha256Buffer(buffer);
     const mtime = mtimeOf(file.originalname || name);
     const existing = findDocByName(accountId, name);
@@ -240,7 +253,7 @@ router.post('/sync', requireAuth, upload.array('files', 100), (req, res) => {
 
   // 返回新的游标：平台当前最新文档时间
   const last = db.prepare('SELECT MAX(updated_at) m FROM documents').get().m || 0;
-  return { pushed, deleted: deletedNames, conflicts, cursor: last, time: now() };
+  return { pushed, deleted: deletedNames, conflicts, skipped, cursor: last, time: now() };
   });
 });
 

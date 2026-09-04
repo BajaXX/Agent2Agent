@@ -50,12 +50,25 @@ function showError(msg) {
   log('错误: ' + msg);
 }
 
-/** 调用内置 a2a CLI（非交互子进程） */
+/**
+ * 调用内置 a2a CLI（非交互子进程）
+ * 关键：不能依赖 PATH 中的 `node` —— VSCode/Cursor 等 GUI 应用启动时 PATH 通常不含
+ * nvm / asdf 等 shell 配置的 node。改用扩展宿主自身的 Node（process.execPath +
+ * ELECTRON_RUN_AS_NODE=1），这是 VSCode 扩展执行 node 脚本的标准方式。
+ */
 function runCli(args, cwd) {
   const a2aJs = path.join(__dirname, 'a2a.js');
   return new Promise((resolve) => {
-    execFile('node', [a2aJs, ...args], { cwd: cwd || '' }, (err, stdout, stderr) => {
-      resolve({ ok: !err, stdout: String(stdout || ''), stderr: String(stderr || '') });
+    const env = Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1' });
+    execFile(process.execPath, [a2aJs, ...args], { cwd: cwd || '', env }, (err, stdout, stderr) => {
+      // 极端兜底：宿主 Node 不可用时尝试系统 node
+      if (err && err.code === 'ENOENT') {
+        execFile('node', [a2aJs, ...args], { cwd: cwd || '' }, (err2, stdout2, stderr2) => {
+          resolve({ ok: !err2, stdout: String(stdout2 || ''), stderr: String(stderr2 || ''), detail: err2 ? err2.message : '' });
+        });
+        return;
+      }
+      resolve({ ok: !err, stdout: String(stdout || ''), stderr: String(stderr || ''), detail: err ? err.message : '' });
     });
   });
 }
@@ -159,7 +172,10 @@ async function cmdCheckin() {
   const r = await runCli(['checkin'], root);
   outputChannel.show(true);
   log(r.stdout || r.stderr);
-  if (!r.ok) vscode.window.showWarningMessage('check-in 失败，请确认平台在线。');
+  if (!r.ok) {
+    vscode.window.showWarningMessage('check-in 失败（详见输出面板）。' + (r.detail ? ' 原因: ' + r.detail : ''));
+    if (r.detail) log('失败原因: ' + r.detail);
+  }
   await refreshAll();
 }
 

@@ -377,10 +377,98 @@ function sha256(buf) {
   return crypto.createHash('sha256').update(buf).digest('hex');
 }
 
-/** 递归扫描 doc 目录（排除 _inbox 子目录与状态/配置文件），返回 relpath → {abs,sha256,mtime,size} */
+
+
+function printConflicts(conflicts) {
+  if (!conflicts || !conflicts.length) return;
+  for (const c of conflicts) {
+    if (c.message) console.log(paint(C.yellow, `⚠ 冲突: ${c.message}`));
+    else if (c.name) console.log(paint(C.yellow, `⚠ 冲突: ${c.name} 已保留平台版本，副本另存 ${c.savedAs || '(未知)'}`));
+    else console.log(paint(C.yellow, `⚠ 冲突: ${JSON.stringify(c)}`));
+  }
+}
+
+/** 推送：扫描 doc 目录 → 对比 manifest → FormData 上传 files + deletes。会就地更新 state。 */
+/** 计算本地 → 平台 的增量计划（新增/修改 + 删除） */
+function computePushPlan(files, manifest) {
+  const toPush = [];
+  const toDelete = [];
+  for (const [rel, info] of Object.entries(files)) {
+    const prev = manifest[rel];
+    if (!prev || prev.sha256 !== info.sha256) toPush.push(rel);
+  }
+  for (const rel of Object.keys(manifest)) {
+    if (!(rel in files)) toDelete.push(rel);
+  }
+  return { toPush, toDelete };
+}
+
+async function pushOnce(config, configDir, state) {
+  const manifest = state.manifest;
+  const { files, privateFiles } = scanDocDir(config, configDir);
+  const { toPush, toDelete } = computePushPlan(files, manifest);
+  // [PRIVATE] 文件：若之前已同步（manifest 有记录），从平台移除（本地加 PRIVATE = 撤回共享）
+  const privateToRemove = privateFiles.filter((rel) => manifest[rel]);
+  const allDelete = Array.from(new Set([...toDelete, ...privateToRemove]));
+
+  if (toPush.length === 0 && allDelete.length === 0) {
+    console.log(paint(C.dim, '[同步·推送] 本地无变更'));
+    if (privateFiles.length) console.log(paint(C.dim, `  （跳过 ${privateFiles.length} 个 [PRIVATE] 私有文件）`));
+    return { pushed: [], deleted: [], conflicts: [] };
+  }
+
+  const form = new FormData();
+  for (const rel of toPush) {
+    const buf = fs.readFileSync(files[rel].abs);
+    form.append('files', new Blob([buf]), rel);
+  }
+  if (allDelete.length) form.append('deletes', JSON.stringify(allDelete));
+
+  const res = await api(config, 'POST', '/sync', { form });
+  const pushed = res.pushed || [];
+  const deleted = res.deleted || [];
+  const conflicts = res.conflicts || [];
+
+  console.log(paint(C.bold, `[同步·推送] 上传 ${pushed.length} 个文件，删除 ${deleted.length} 个`));
+  for (const p of pushed) console.log(`  + ${p.name || p}`);
+  for (const d of deleted) console.log(`  - ${d}`);
+  if (privateFiles.length) console.log(paint(C.yellow, `  （跳过 ${privateFiles.length} 个 [PRIVATE] 私有文件${privateToRemove.length ? `，撤回 ${privateToRemove.length} 个已共享的私有文件` : ''}）`));
+  printConflicts(conflicts);
+
+  // 仅当推送成功后再更新本地 manifest
+  for (const rel of toPush) {
+    manifest[rel] = { sha256: files[rel].sha256, mtime: files[rel].mtime, size: files[rel].size };
+  }
+  for (const rel of allDelete) delete manifest[rel];
+  if (res.cursor) state.lastSync = Math.max(state.lastSync || 0, res.cursor);
+
+  return { pushed, deleted, conflicts };
+}
+
+/** 判断文件是否标记 [PRIVATE]（首行；仅文本类文件检测，二进制按公开处理） */
+function isPrivateFile(absPath) {
+  try {
+    const fd = fs.openSync(absPath, 'r');
+    const buf = Buffer.alloc(512);
+    const n = fs.readSync(fd, buf, 0, 512, 0);
+    fs.closeSync(fd);
+    const head = buf.slice(0, n).toString('utf8');
+    // 二进制（含 NUL）跳过；首行去 BOM 后匹配 [PRIVATE]
+    if (head.includes('\u0000')) return false;
+    return /^[\s\S]*?^\uFEFF?\[PRIVATE\]/m.test(head) || /^\uFEFF?\[PRIVATE\]/.test(head);
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * 同步扫描：跳过 [PRIVATE] 文件；
+ * 若某文件之前已同步（manifest 有记录）但现在标记 [PRIVATE]，返回 true（需要从平台移除）。
+ */
 function scanDocDir(config, configDir) {
   const root = resolveDocDir(config, configDir);
   const result = {};
+  const privateFiles = [];
   function walk(dir, rel) {
     let entries;
     try {
@@ -396,6 +484,10 @@ function scanDocDir(config, configDir) {
         walk(abs, relp);
       } else if (e.isFile()) {
         if (e.name === '.a2a-state.json' || e.name === '.a2a.json') continue;
+        if (isPrivateFile(abs)) {
+          privateFiles.push(relp); // [PRIVATE]：不同步
+          continue;
+        }
         const buf = fs.readFileSync(abs);
         result[relp] = {
           abs,
@@ -407,68 +499,7 @@ function scanDocDir(config, configDir) {
     }
   }
   walk(root, '');
-  return result;
-}
-
-/** 计算本地 → 平台 的增量计划（新增/修改 + 删除） */
-function computePushPlan(scan, manifest) {
-  const toPush = [];
-  const toDelete = [];
-  for (const [rel, info] of Object.entries(scan)) {
-    const prev = manifest[rel];
-    if (!prev || prev.sha256 !== info.sha256) toPush.push(rel);
-  }
-  for (const rel of Object.keys(manifest)) {
-    if (!(rel in scan)) toDelete.push(rel);
-  }
-  return { toPush, toDelete };
-}
-
-function printConflicts(conflicts) {
-  if (!conflicts || !conflicts.length) return;
-  for (const c of conflicts) {
-    if (c.message) console.log(paint(C.yellow, `⚠ 冲突: ${c.message}`));
-    else if (c.name) console.log(paint(C.yellow, `⚠ 冲突: ${c.name} 已保留平台版本，副本另存 ${c.savedAs || '(未知)'}`));
-    else console.log(paint(C.yellow, `⚠ 冲突: ${JSON.stringify(c)}`));
-  }
-}
-
-/** 推送：扫描 doc 目录 → 对比 manifest → FormData 上传 files + deletes。会就地更新 state。 */
-async function pushOnce(config, configDir, state) {
-  const manifest = state.manifest;
-  const scan = scanDocDir(config, configDir);
-  const { toPush, toDelete } = computePushPlan(scan, manifest);
-
-  if (toPush.length === 0 && toDelete.length === 0) {
-    console.log(paint(C.dim, '[同步·推送] 本地无变更'));
-    return { pushed: [], deleted: [], conflicts: [] };
-  }
-
-  const form = new FormData();
-  for (const rel of toPush) {
-    const buf = fs.readFileSync(scan[rel].abs);
-    form.append('files', new Blob([buf]), rel);
-  }
-  if (toDelete.length) form.append('deletes', JSON.stringify(toDelete));
-
-  const res = await api(config, 'POST', '/sync', { form });
-  const pushed = res.pushed || [];
-  const deleted = res.deleted || [];
-  const conflicts = res.conflicts || [];
-
-  console.log(paint(C.bold, `[同步·推送] 上传 ${pushed.length} 个文件，删除 ${deleted.length} 个`));
-  for (const p of pushed) console.log(`  + ${p.name || p}`);
-  for (const d of deleted) console.log(`  - ${d}`);
-  printConflicts(conflicts);
-
-  // 仅当推送成功后再更新本地 manifest
-  for (const rel of toPush) {
-    manifest[rel] = { sha256: scan[rel].sha256, mtime: scan[rel].mtime, size: scan[rel].size };
-  }
-  for (const rel of toDelete) delete manifest[rel];
-  if (res.cursor) state.lastSync = Math.max(state.lastSync || 0, res.cursor);
-
-  return { pushed, deleted, conflicts };
+  return { files: result, privateFiles };
 }
 
 /** 拉取：GET /sync?since= → 写 _inbox/<accountId>/<name>。会就地更新 state。 */
@@ -840,6 +871,13 @@ async function cmdCheckin(opts, ctx) {
   console.log(hl('========== a2a checkin =========='));
   console.log(`账号: ${acct.name || acct.id || ctx.config.accountId}   状态: ${acct.status || 'starting'}`);
   console.log(`记忆版本: v${mem.version ?? 0}`);
+  // 记忆维护提示：空记忆 / 版本过低时提醒 agent 写回（记忆由 agent 自己维护）
+  const memEmpty = !mem.content || !String(mem.content || '').trim();
+  if (memEmpty) {
+    console.log(paint(C.yellow, '  ⚠ 记忆为空：本账号尚无 memory.md。请在会话中/结束时把「进展、决策、待办、协作关系」整理成记忆文件，用 a2a memory set <file> 写回（跨会话保持上下文的关键）。'));
+  } else if ((mem.version || 0) < 2) {
+    console.log(paint(C.dim, '  （提示：建议每次会话结束前用 a2a memory set 更新记忆，保持 v' + (mem.version || 0) + ' → 演进）'));
+  }
   console.log(`未读消息: ${pending.unreadMessages ?? inboxItems.length} 条   待办任务: ${pending.todoTasks ?? taskItems.length} 个`);
 
   console.log('');
@@ -1053,6 +1091,49 @@ async function cmdDocGet(opts, ctx, pos) {
   console.log(`已保存到 ${outAbs}（${fmtSize(buf.length)}）`);
 }
 
+const TEXT_EXT_SET = new Set(['md', 'txt', 'json', 'js', 'mjs', 'cjs', 'ts', 'py', 'yaml', 'yml', 'html', 'css', 'xml', 'csv', 'log', 'ini', 'conf', 'sh', 'sql', 'toml']);
+function isLikelyText(mime, name) {
+  if (typeof mime === 'string' && mime.startsWith('text/')) return true;
+  const ext = String(name || '').split('.').pop().toLowerCase();
+  return TEXT_EXT_SET.has(ext);
+}
+
+/**
+ * `a2a doc view @账号/路径/文件.md` —— 按 @引用 查看公开文档（只读，他人文档也可看）。
+ * 引用格式：@<accountId>/<doc目录相对路径>，如 @B项目开发/docs/api.md 或 @dsh-预研/A项目需求.md。
+ */
+async function cmdDocView(ctx, pos) {
+  const ref = pos[0];
+  if (!ref) fail('doc view 需要 <@账号/路径/文件>，如 a2a doc view @B项目开发/docs/api.md');
+  const clean = String(ref).replace(/^@/, '');
+  const parts = clean.split('/');
+  if (parts.length < 2) fail('引用格式：@账号/路径/文件（至少 @账号/文件）');
+  const account = parts.shift();
+  const name = parts.join('/');
+  if (!account || !name) fail('引用格式：@账号/路径/文件');
+
+  const listRes = await api(ctx.config, 'GET', '/documents', { query: { account, name } });
+  const list = toArray(listRes);
+  if (!list.length) fail(`未找到文档 @${account}/${name}（该账号未上传此文档，或已被删除）`);
+  const doc = list[0];
+
+  const dl = await api(ctx.config, 'GET', `/documents/${doc.id}/content`, { raw: true, query: { inline: 1 } });
+  const buf = dl.buf;
+
+  console.log(`===== @${account}/${doc.name}（${fmtSize(doc.size)}，${doc.description || '无描述'}）=====`);
+  if (isLikelyText(doc.mime, doc.name)) {
+    const text = buf.toString('utf8');
+    process.stdout.write(text);
+    if (text && !text.endsWith('\n')) process.stdout.write('\n');
+  } else {
+    const outAbs = path.resolve(process.cwd(), doc.name.split('/').pop() || 'doc.bin');
+    fs.mkdirSync(path.dirname(outAbs), { recursive: true });
+    fs.writeFileSync(outAbs, buf);
+    console.log(`（二进制/非文本文件，已保存到 ${outAbs}）`);
+  }
+  console.log('==========================================');
+}
+
 async function cmdMemoryGet(ctx) {
   const res = await api(ctx.config, 'GET', '/memory');
   const version = res.version ?? 0;
@@ -1148,6 +1229,7 @@ function printHelp() {
   console.log('  a2a task list [--status S] [--account A]');
   console.log('  a2a task update --id <ID> [--status S] [--note N] [--assignee A]');
   console.log('  a2a doc up <file> [--desc D]');
+  console.log('  a2a doc view <@账号/路径/文件>   # 按 @引用 查看文档（只读）');
   console.log('  a2a doc ls [--account A]');
   console.log('  a2a doc get <id> [--out FILE] [--inline]');
   console.log('  a2a sync');
@@ -1235,6 +1317,7 @@ async function main() {
       if (sub === 'up') await cmdDocUp(opts, ctx, pos.slice(2));
       else if (sub === 'ls') await cmdDocLs(opts, ctx);
       else if (sub === 'get') await cmdDocGet(opts, ctx, pos.slice(2));
+      else if (sub === 'view') await cmdDocView(ctx, pos.slice(2));
       else fail('doc 子命令: up | ls | get（用 a2a help 查看用法）');
       break;
     case 'memory':
