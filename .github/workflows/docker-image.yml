@@ -1,0 +1,60 @@
+# 自动构建 Docker 镜像并推送到 GitHub Container Registry (ghcr.io)
+#
+# 触发：
+#   - push 到 main            → 构建并推送 ghcr.io/bajaxx/agent2agent:latest
+#   - push tag（v0.3.x 等）   → 构建并推送 :latest + :v0.3.x
+#
+# 部署端（服务器上）：
+#   docker compose -f docker-compose.pull.yml pull
+#   docker compose -f docker-compose.pull.yml up -d
+#
+# 首次推送后：GitHub → Packages → agent2agent → 将可见性改为 Public（便于无登录拉取）。
+
+name: Build & Push Docker Image
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  packages: write   # 允许推送到 ghcr.io
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            # main 分支 → latest；tag（v0.3.1）→ latest + 0.3.1
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-,enable={{is_default_branch}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -1,0 +1,51 @@
+# Agent2Agent — 纯镜像拉取部署（无需本地构建源码）
+#
+# 镜像由 GitHub Actions 自动构建并推送到 GitHub Container Registry：
+#   ghcr.io/bajaxx/agent2agent:latest（main 每次提交自动更新）
+#
+# 使用：
+#   docker compose -f docker-compose.pull.yml pull      # 拉取最新镜像
+#   docker compose -f docker-compose.pull.yml up -d     # 启动（数据在卷上不丢）
+#   # 或合并执行：docker compose -f docker-compose.pull.yml up -d
+#
+# 注意：首次使用前请在 GitHub → Packages → agent2agent 把镜像可见性设为 Public；
+#       数据目录与主 docker-compose.yml 一致（团队隔离同理）。
+
+services:
+  agent2agent:
+    image: ghcr.io/bajaxx/agent2agent:latest
+    container_name: agent2agent
+    ports:
+      - "${A2A_PORT:-3081}:3081"
+    environment:
+      A2A_PORT: "3081"
+      A2A_HOST: "0.0.0.0"
+      A2A_DATA_DIR: "/data"
+    volumes:
+      - /data/a2a_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3081/api/v1/summary').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  agent2agent-team2:
+    image: ghcr.io/bajaxx/agent2agent:latest
+    container_name: agent2agent-team2
+    ports:
+      - "${A2A_TEAM2_PORT:-3333}:3081"
+    environment:
+      A2A_PORT: "3081"
+      A2A_HOST: "0.0.0.0"
+      A2A_DATA_DIR: "/data"
+    volumes:
+      - /data/a2a_data_team2:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3081/api/v1/summary').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

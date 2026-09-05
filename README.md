@@ -46,6 +46,14 @@ docker compose up -d --build
 - 数据持久化：宿主 `/data/a2a_data`（SQLite + 账号文件），**镜像可随时重建，数据不丢**
 - 换端口：`A2A_PORT=8080 docker compose up -d`
 
+**从 GitHub 镜像部署（免源码构建）**：镜像由 GitHub Actions 自动构建推送到 `ghcr.io/bajaxx/agent2agent`（每次 push main 更新 `latest`，打 `v*` tag 推版本号）：
+
+```bash
+docker compose -f docker-compose.pull.yml up -d    # 拉取最新镜像并启动（数据在卷上不丢）
+```
+
+> 首次使用前：GitHub → Packages → agent2agent → 可见性设为 Public。镜像更新 = 重新 `pull && up -d`。
+
 **多团队隔离**：compose 内置第二实例 `agent2agent-team2`（3333 端口 / `/data/a2a_data_team2`），两套数据、账号体系完全独立：
 
 ```bash

@@ -757,10 +757,13 @@ async function cmdUpdateSkills(opts) {
     console.log('');
     process.stdout.write(paint(C.dim, '确认更新？(y/N，30 秒无输入自动取消) '));
     const nextLine = createLineReader();
+    let confirmTimer = null;
     const ans = await Promise.race([
       nextLine(),
-      new Promise((r) => setTimeout(() => r(''), 30000)),
+      new Promise((r) => { confirmTimer = setTimeout(() => r(''), 30000); }),
     ]);
+    if (confirmTimer) clearTimeout(confirmTimer);
+    nextLine.close();
     if (!/^y/i.test(String(ans || ''))) {
       console.log(paint(C.yellow, '已取消（可用 a2a update-skills --yes 跳过确认）'));
       return;
@@ -829,14 +832,15 @@ async function cmdUpdate(opts) {
  * ------------------------------------------------------------------------- */
 
 /** 交互式提问：依次向用户询问缺失的字段（仅 TTY 下启用） */
+/** 交互式 stdin 行读取器（供 init 向导 / update-skills 确认使用） */
 function createLineReader() {
   // 自研逐行读取：输入提前到达时缓存到队列，等待者按序消费（兼容人机/伪终端/管道）
   let buffer = '';
   const queue = [];
   const waiters = [];
+  let closed = false;
   process.stdin.setEncoding('utf8');
-  process.stdin.resume();
-  process.stdin.on('data', (chunk) => {
+  const handler = (chunk) => {
     buffer += chunk;
     let i;
     while ((i = buffer.indexOf('\n')) >= 0) {
@@ -846,11 +850,21 @@ function createLineReader() {
       if (w) w(line);
       else queue.push(line);
     }
-  });
-  return function nextLine() {
+  };
+  process.stdin.on('data', handler);
+  process.stdin.resume();
+  const nextLine = () => {
     if (queue.length) return Promise.resolve(queue.shift());
     return new Promise((resolve) => waiters.push(resolve));
   };
+  // close：移除监听并暂停 stdin——否则 TTY（永不 EOF）会保持事件循环，命令结束后进程不退出
+  nextLine.close = () => {
+    if (closed) return;
+    closed = true;
+    process.stdin.removeListener('data', handler);
+    process.stdin.pause();
+  };
+  return nextLine;
 }
 
 async function promptInteractive(fields) {
@@ -868,6 +882,7 @@ async function promptInteractive(fields) {
     }
     answers[f.key] = val;
   }
+  nextLine.close();
   return answers;
 }
 
