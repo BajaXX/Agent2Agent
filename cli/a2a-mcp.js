@@ -24,7 +24,7 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 
-const VERSION = '0.3.4';
+const VERSION = '0.3.5';
 const PROTOCOL_VERSION = '2024-11-05'; // MCP 当前稳定协议版本
 
 /* ------------------------------------------------------------------ *
@@ -359,6 +359,16 @@ async function apiText(config, pathName) {
  * ------------------------------------------------------------------ */
 // 兼容的 MCP 协议版本（Cursor 可能请求较新版本，回显客户端请求值）
 const KNOWN_PROTOCOLS = ['2024-11-05', '2025-03-26', '2025-06-18'];
+
+/* 崩溃兜底：任何未捕获异常/拒绝都打印真实堆栈到 stderr（Cursor 会显示出来），便于定位 */
+process.on('uncaughtException', (err) => {
+  console.error('[a2a-mcp] uncaughtException:', err && err.stack ? err.stack : err);
+  process.exit(1);
+});
+process.on('unhandledRejection', (err) => {
+  console.error('[a2a-mcp] unhandledRejection:', err && err.stack ? err.stack : err);
+  process.exit(1);
+});
 
 function main() {
   // 找不到配置不再退出：server 照常启动（tools 可用），调用工具时才给出明确指引
