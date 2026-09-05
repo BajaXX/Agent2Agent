@@ -98,6 +98,16 @@
     }
   },
   "scripts": {
-    "package": "vsce package"
+    "sync-cli": "node -e \"require('fs').copyFileSync(require('path').resolve(__dirname, '../../cli/a2a.js'), require('path').resolve(__dirname, 'a2a.js'))\"",
+    "package": "npm run sync-cli && vsce package --out a2a-vscode.vsix",
+    "package:vsix": "npm run package",
+    "prepackage": "npm run sync-cli"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.2.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BajaXX/Agent2Agent.git"
   }
 }

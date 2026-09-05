@@ -45,12 +45,14 @@
 ### 方式三：打包为 VSIX 安装
 
 ```bash
-npm install -g @vscode/vsce
 cd extensions/a2a-vscode
-vsce package          # 生成 a2a-vscode-0.1.0.vsix
+npm install          # 安装打包依赖（@vscode/vsce）
+npm run package      # 自动同步内置 CLI + 打包，生成 a2a-vscode.vsix
 ```
 
 然后在 IDE 中：扩展面板 → `...` → **Install from VSIX...** 选择该文件。
+
+> `npm run package` 会先自动把仓库最新 `cli/a2a.js` 同步进扩展（保持内置 CLI 最新），再调用 vsce 打包；产物 `a2a-vscode.vsix` 在扩展目录下（已 gitignore）。
 
 ## 使用
 

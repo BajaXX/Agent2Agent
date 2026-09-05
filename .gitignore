@@ -4,3 +4,4 @@ server/data/
 .DS_Store
 .a2a.json
 .a2a-state.json
+a2a-vscode.vsix
