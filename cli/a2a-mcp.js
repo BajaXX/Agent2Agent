@@ -24,7 +24,7 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 
-const VERSION = '0.3.3';
+const VERSION = '0.3.4';
 const PROTOCOL_VERSION = '2024-11-05'; // MCP 当前稳定协议版本
 
 /* ------------------------------------------------------------------ *
@@ -357,12 +357,19 @@ async function apiText(config, pathName) {
 /* ------------------------------------------------------------------ *
  * MCP stdio 传输（换行分隔 JSON-RPC 2.0）
  * ------------------------------------------------------------------ */
+// 兼容的 MCP 协议版本（Cursor 可能请求较新版本，回显客户端请求值）
+const KNOWN_PROTOCOLS = ['2024-11-05', '2025-03-26', '2025-06-18'];
+
 function main() {
+  // 找不到配置不再退出：server 照常启动（tools 可用），调用工具时才给出明确指引
   const config = resolveConfig();
-  if (!config.url) {
-    console.error('[a2a-mcp] 未找到平台配置：请在项目根运行（含 .a2a.json），或设置 A2A_URL / A2A_TOKEN / A2A_ACCOUNT');
-    console.error('[a2a-mcp] 首次接入：a2a init');
-    process.exit(1);
+  const cfgMissing = !config.url;
+  if (cfgMissing) {
+    console.error(`[a2a-mcp v${VERSION}] 当前工作目录: ${process.cwd()}`);
+    console.error('[a2a-mcp] 未找到平台配置（.a2a.json）：请在含 .a2a.json 的项目目录使用；');
+    console.error('[a2a-mcp] 或设置 A2A_URL / A2A_TOKEN / A2A_ACCOUNT 环境变量；首次接入：a2a init');
+  } else {
+    console.error(`[a2a-mcp v${VERSION}] 已加载配置: ${config.url}（账号: ${config.accountId || '?'}）`);
   }
 
   const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
@@ -397,14 +404,18 @@ function main() {
       err && err.message ? err.message : String(err));
 
     switch (method) {
-      case 'initialize':
+      case 'initialize': {
         serverReady = true;
+        // 协议版本协商：回显客户端请求的已知版本，避免较新客户端不兼容
+        const reqVer = params && params.protocolVersion;
+        const ver = KNOWN_PROTOCOLS.includes(reqVer) ? reqVer : PROTOCOL_VERSION;
         finish({
-          protocolVersion: PROTOCOL_VERSION,
+          protocolVersion: ver,
           capabilities: { tools: { listChanged: false } },
           serverInfo: { name: 'a2a-mcp', version: VERSION },
         });
         break;
+      }
       case 'ping':
         finish({});
         break;
@@ -413,6 +424,11 @@ function main() {
         break;
       case 'tools/call': {
         const { name, arguments: args } = params || {};
+        if (cfgMissing) {
+          const errText = '平台未配置：请在含 .a2a.json 的项目目录使用本 MCP（Cursor 的项目级 .cursor/mcp.json 会把工作目录设为项目根），或设置 A2A_URL/A2A_TOKEN/A2A_ACCOUNT 环境变量。首次接入运行 a2a init。';
+          finish({ isError: true, content: [{ type: 'text', text: errText }] });
+          break;
+        }
         callTool(config, name, args || {})
           .then((result) => {
             const text = typeof result === 'string' ? result : JSON.stringify(result, null, 2);

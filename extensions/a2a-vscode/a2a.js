@@ -1371,6 +1371,29 @@ async function cmdHeartbeat(opts, ctx) {
   );
 }
 
+/** `a2a mcp-setup`：在当前项目生成 .cursor/mcp.json（Cursor/Windsurf 用），使用绝对路径免 PATH 问题 */
+async function cmdMcpSetup() {
+  const nodePath = process.execPath; // 当前 node 绝对路径（避免 Cursor 环境 PATH 无 node/nvm）
+  const mcpPath = path.join(__dirname, 'a2a-mcp.js');
+  if (!fs.existsSync(mcpPath)) {
+    fail('未找到 a2a-mcp.js（' + mcpPath + '）。请使用 npm 全局安装：npm install -g agent2agent-cli');
+  }
+  const config = {
+    mcpServers: {
+      a2a: { command: nodePath, args: [mcpPath] },
+    },
+  };
+  const dir = path.join(process.cwd(), '.cursor');
+  fs.mkdirSync(dir, { recursive: true });
+  const target = path.join(dir, 'mcp.json');
+  fs.writeFileSync(target, JSON.stringify(config, null, 2) + '\n');
+  console.log(paint(C.green, `已生成 ${target}`));
+  console.log('  server: a2a（command=' + nodePath + '）');
+  console.log('说明：该配置随项目提交，团队 clone 后无需再配；');
+  console.log('      请在当前项目（含 .a2a.json）使用，a2a-mcp 会自动匹配该项目账号。');
+  console.log('重启 Cursor 后生效（MCP 面板应显示 13 个工具）。');
+}
+
 /* ------------------------------------------------------------------------- *
  * 帮助
  * ------------------------------------------------------------------------- */
@@ -1397,6 +1420,7 @@ function printHelp() {
     ['sync', '双向镜像同步本地 doc 目录 ↔ 平台'],
     ['memory', '记忆（get / set）'],
     ['heartbeat', '心跳'],
+    ['mcp-setup', '生成 .cursor/mcp.json（Cursor/Windsurf MCP 接入）'],
     ['update-check', '检查各组件是否有新版本'],
     ['update', '一键更新 CLI + skills'],
     ['update-skills', '更新已安装的 skills（--to 指定目录 / --yes 免确认）'],
@@ -1489,6 +1513,10 @@ async function main() {
   }
   if (cmd === 'update') {
     await cmdUpdate(opts);
+    return;
+  }
+  if (cmd === 'mcp-setup') {
+    await cmdMcpSetup();
     return;
   }
   if (cmd === 'update-check') {

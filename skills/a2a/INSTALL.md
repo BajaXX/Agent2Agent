@@ -235,6 +235,12 @@ EOF
 
 随 `agent2agent-cli` 一起分发的还有 **`a2a-mcp`**（MCP stdio server，与 `a2a` 同一包、同一 `.a2a.json` 配置）。支持 MCP 的客户端可以把它作为 MCP server 接入，agent 以**结构化工具**方式操作平台（工具自带说明与参数 Schema，agent 自动理解）；**流程规范（人类确认、任务工作流等）与 CLI 方式完全一致**，仍由本包 SKILL.md 承载。
 
+**Cursor / Windsurf（推荐，一键生成项目级配置）**——在项目根（含 `.a2a.json`）执行：
+```bash
+a2a mcp-setup    # 生成 .cursor/mcp.json（绝对路径，重启 Cursor 生效，MCP 面板应显示 13 个工具）
+```
+该配置文件可提交到仓库，团队 clone 后无需再配。也可手动建 `.cursor/mcp.json`（见下方格式）。
+
 **Claude Code：**
 ```bash
 claude mcp add a2a -- node $(which a2a-mcp)
