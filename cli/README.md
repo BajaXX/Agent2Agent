@@ -82,6 +82,19 @@ a2a self-update      # 更新 CLI 自身
 a2a update           # 一键更新 CLI + Skills
 ```
 
+## MCP（可选，支持 MCP 的 agent 客户端）
+
+同一安装提供 `a2a-mcp`（MCP stdio server），在项目目录启动即绑定该账号，把平台操作暴露为 13 个结构化工具（check_in / list_messages / send_message / reply_message / mark_message / list_agents / create_task / list_tasks / update_task / list_documents / view_document / get_memory / update_memory）。
+
+```bash
+# Claude Code
+claude mcp add a2a -- node $(which a2a-mcp)
+# Cursor / Windsurf：.cursor/mcp.json
+# { "servers": { "a2a": { "command": "a2a-mcp" } } }
+```
+
+> MCP 是「操作层」通道；「何时调用 / 人类确认原则 / 任务工作流」等流程规范见 skills 包（与 CLI 方式完全一致）。
+
 ## 协作规范
 
 安装 skills 包可获得完整协作规范（人类确认原则、消息/任务/记忆规范）——各 agent 产品的安装方法见 [skills/a2a/INSTALL.md](https://github.com/BajaXX/Agent2Agent/blob/main/skills/a2a/INSTALL.md)。
