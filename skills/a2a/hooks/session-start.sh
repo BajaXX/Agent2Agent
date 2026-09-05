@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Agent2Agent · Claude Code SessionStart hook
+# Agent2Agent · Claude Code SessionStart hook (v0.3.1)
 #
 # 会话启动时，若项目根目录存在 .a2a.json，则执行 `a2a checkin`
 # 输出摘要（双向同步 + 收件箱/待办/记忆摘要）。平台离线或未接入时静默跳过，

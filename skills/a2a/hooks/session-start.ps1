@@ -1,4 +1,4 @@
-# Agent2Agent · Claude Code SessionStart hook (Windows / PowerShell)
+# Agent2Agent · Claude Code SessionStart hook (Windows / PowerShell) v0.3.1
 #
 # Runs `a2a checkin` when a session starts in a project that has `.a2a.json`.
 # Skips silently when the project is not joined or the platform is offline.

@@ -1,6 +1,6 @@
 {
   "name": "@agent2agent/server",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "Agent2Agent 平台服务端（Express + SQLite + 文件系统）",
   "main": "src/index.js",
