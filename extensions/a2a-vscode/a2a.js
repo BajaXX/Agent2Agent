@@ -805,6 +805,7 @@ async function cmdUpdateSkills(opts) {
 /** `a2a update`：一键更新 CLI + Skills（平台由运维执行 docker 命令） */
 async function cmdUpdate(opts) {
   console.log(hl('===== a2a update ====='));
+  let updated = false;
   if (VERSION) {
     // 先检查 CLI 版本
     const pkg = await fetchJson('https://registry.npmjs.org/' + NPM_PACKAGE + '/latest');
@@ -813,6 +814,7 @@ async function cmdUpdate(opts) {
       try {
         execSync(`npm install -g ${NPM_PACKAGE}@latest`, { stdio: 'inherit' });
         console.log(paint(C.green, '[CLI] 更新完成 ✅'));
+        updated = true;
       } catch (e) {
         console.log(paint(C.red, `[CLI] 更新失败，请手动：npm install -g ${NPM_PACKAGE}@latest`));
       }
@@ -822,9 +824,15 @@ async function cmdUpdate(opts) {
   } else {
     console.log(paint(C.yellow, '[CLI] 单文件安装无版本信息，建议：npm install -g ' + NPM_PACKAGE));
   }
+  if (updated) {
+    // 本进程仍是旧代码：让用户退出后重跑，以用新版本完成其余更新
+    const pkg2 = await fetchJson('https://registry.npmjs.org/' + NPM_PACKAGE + '/latest').catch(() => null);
+    console.log(paint(C.yellow, 'CLI 已更新到 v' + (pkg2 ? pkg2.version : '最新') + '。请退出后重新运行 a2a update（或直接运行 a2a update-skills）完成 skills 更新。'));
+    return;
+  }
   await cmdUpdateSkills({ yes: opts.yes || opts.y });
   console.log('');
-  console.log('平台更新（在部署服务器执行）：cd <仓库> && git pull && docker compose up -d --build');
+  console.log('平台更新（在部署服务器执行）：cd <仓库> && git pull && docker compose up -d --build（或 docker compose -f docker-compose.pull.yml up -d）');
 }
 
 /* ------------------------------------------------------------------------- *
@@ -1483,16 +1491,18 @@ async function main() {
     await cmdUpdate(opts);
     return;
   }
+  if (cmd === 'update-check') {
+    // 有 .a2a.json 则附带平台版本对比；无配置只检查 CLI / skills
+    let cfg = null;
+    try { cfg = requireConfig(opts.config); } catch (e) { cfg = null; }
+    await cmdUpdateCheck(cfg || { config: null });
+    return;
+  }
 
   let ctx = null;
   try {
     ctx = requireConfig(opts.config);
   } catch (e) {
-    // update-check 允许无配置运行（仅检查 CLI / skills）；其余命令必须配置
-    if (cmd === 'update-check') {
-      await cmdUpdateCheck({ config: null });
-      return;
-    }
     process.stderr.write(String(e.message || e) + '\n');
     process.exit(1);
   }
@@ -1552,7 +1562,20 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  const msg = err && err.message ? err.message : String(err);
-  fail(msg);
-});
+main()
+  .catch((err) => {
+    const msg = err && err.message ? err.message : String(err);
+    fail(msg);
+  })
+  .finally(() => {
+    // 统一「跑完即退」守卫：命令逻辑完成后，若仍有残留句柄（stdin 监听、定时器等）
+    // 阻止事件循环退出，短暂等待 stdout flush 后强制退出，回到 shell。
+    const guard = setTimeout(() => {
+      try {
+        process.stdin.pause();
+        if (process.stdin.removeAllListeners) process.stdin.removeAllListeners('data');
+      } catch (e) { /* ignore */ }
+      process.exit(process.exitCode || 0);
+    }, 600);
+    if (guard.unref) guard.unref();
+  });
