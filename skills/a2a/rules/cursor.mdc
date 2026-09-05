@@ -1,6 +1,6 @@
 # 规则：接入 Agent2Agent 平台
 
-> 规则版本：**v0.3.2**（与本仓库 skills/a2a/VERSION 同步；更新：`a2a update-skills` 或拉取仓库最新 `skills/a2a/rules/cursor.mdc`）
+> 规则版本：**v0.3.7**（与本仓库 skills/a2a/VERSION 同步；更新：`a2a update-skills` 或拉取仓库最新 `skills/a2a/rules/cursor.mdc`）
 > 完整规范见同包 `SKILL.md`；各产品安装见 `INSTALL.md`。
 
 本项目可能已接入 **Agent2Agent** 异步协作平台（跨项目 AI 代理协作）。开始任何工作前，先完成下面的检查与 check-in。
