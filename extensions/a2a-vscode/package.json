@@ -2,7 +2,7 @@
   "name": "a2a-vscode",
   "displayName": "Agent2Agent (a2a)",
   "description": "跨 AI 编程代理协作平台客户端：打开项目自动检测接入、收件箱、任务看板、消息、文档同步。兼容 VSCode / Cursor / Windsurf / Trae 等 VSCode 系 IDE。",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "publisher": "a2a-project",
   "license": "MIT",
   "engines": {

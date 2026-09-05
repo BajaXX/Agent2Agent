@@ -689,10 +689,19 @@ const SKILL_FILES = [
   'rules/cursor.mdc',
 ];
 
-/** 下载单个文件到目标（返回是否成功） */
+/** 下载单个文件到目标（带超时，避免网络挂起；失败抛明确错误） */
 async function downloadTo(relPath, destDir) {
   const url = `${SKILLS_RAW_BASE}/${relPath}`;
-  const res = await fetch(url, { headers: { 'User-Agent': 'a2a-cli' } });
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000); // 20s 超时
+  let res;
+  try {
+    res = await fetch(url, { headers: { 'User-Agent': 'a2a-cli' }, signal: ctrl.signal });
+  } catch (e) {
+    clearTimeout(timer);
+    throw new Error(`连接超时/失败（${SKILLS_RAW_BASE.replace(/^https?:\/\//, '')}），无法访问 GitHub 下载源；可稍后重试，或设置镜像源：A2A_SKILLS_URL=<可访问的镜像地址>`);
+  }
+  clearTimeout(timer);
   if (!res.ok) throw new Error(`下载失败 ${relPath} (HTTP ${res.status})`);
   const buf = Buffer.from(await res.arrayBuffer());
   const dest = path.join(destDir, ...relPath.split('/'));
@@ -743,24 +752,31 @@ async function cmdUpdateSkills(opts) {
 
   console.log(hl('===== a2a update-skills ====='));
   for (const t of targets) console.log(`  将更新: [${t.label}]`);
+
   if (!autoYes && process.stdin.isTTY) {
     console.log('');
-    process.stdout.write('确认更新？(y/N) ');
-    const ans = await new Promise((resolve) => {
-      const rl = require('readline').createInterface({ input: process.stdin, output: process.stdout });
-      rl.question('', (a) => { rl.close(); resolve(a); });
-    });
-    if (!/^y/i.test(ans)) { console.log('已取消'); return; }
+    process.stdout.write(paint(C.dim, '确认更新？(y/N，30 秒无输入自动取消) '));
+    const nextLine = createLineReader();
+    const ans = await Promise.race([
+      nextLine(),
+      new Promise((r) => setTimeout(() => r(''), 30000)),
+    ]);
+    if (!/^y/i.test(String(ans || ''))) {
+      console.log(paint(C.yellow, '已取消（可用 a2a update-skills --yes 跳过确认）'));
+      return;
+    }
   } else if (!autoYes && !process.stdin.isTTY) {
     console.log(paint(C.yellow, '（非交互环境：加 --yes 跳过确认）'));
     if (!process.env.A2A_AUTO_UPDATE) return;
   }
 
+  console.log(paint(C.dim, `下载源: ${SKILLS_RAW_BASE}（网络较慢时可用 A2A_SKILLS_URL 指定镜像）`));
   let okCount = 0;
   for (const t of targets) {
     try {
       if (t.type === 'cursor') {
         // 规则目录：写入 a2a.mdc，删除旧文件名
+        process.stdout.write(`  ⏳ ${t.label} 下载中...`);
         const dest = await downloadTo('rules/cursor.mdc', t.dir);
         const renamed = path.join(t.dir, 'a2a.mdc');
         fs.renameSync(dest, renamed);
@@ -768,14 +784,15 @@ async function cmdUpdateSkills(opts) {
           const p = path.join(t.dir, old);
           if (fs.existsSync(p)) { try { fs.unlinkSync(p); } catch (e) { /* ignore */ } }
         }
-        console.log(`  ✓ ${t.label} → ${renamed}`);
+        console.log(`\r  ✓ ${t.label} → ${renamed}`);
       } else {
+        process.stdout.write(`  ⏳ ${t.label} 下载中...`);
         for (const rel of SKILL_FILES) await downloadTo(rel, t.dir);
-        console.log(`  ✓ ${t.label} → ${t.dir}（${SKILL_FILES.length} 个文件）`);
+        console.log(`\r  ✓ ${t.label} → ${t.dir}（${SKILL_FILES.length} 个文件）`);
       }
       okCount++;
     } catch (e) {
-      console.log(paint(C.red, `  ✗ ${t.label} 更新失败: ${e.message}`));
+      console.log(`\r  ✗ ${t.label} 更新失败: ${paint(C.red, e.message)}`);
     }
   }
   console.log(hl(`更新完成（成功 ${okCount}/${targets.length}）`));
