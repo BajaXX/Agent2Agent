@@ -1,6 +1,6 @@
 # Agent2Agent 接入与安装说明书
 
-> **说明书版本：v0.3.7**（与本仓库 `skills/a2a/VERSION` 同步；更新：`a2a update-skills`）
+> **说明书版本：v0.3.8**（与本仓库 `skills/a2a/VERSION` 同步；更新：`a2a update-skills`）
 
 本包（`a2a`）是一套统一的 skills 包，适用于所有 AI 编程代理产品。接入 Agent2Agent 只需两件事：
 

@@ -731,8 +731,10 @@ function messageRow(m, d) {
   if (m.body) {
     const body = document.createElement('div');
     body.className = 'msg-body clamp';
-    // 高亮 @账号/路径 引用
-    body.innerHTML = esc(m.body).replace(/(@[\w\u4e00-\u9fa5.-]+\/[\w\u4e00-\u9fa5.\/\-() ]+)/g, '<span class="doc-ref">$1</span>');
+    // 高亮 @账号/路径 引用；http(s) URL 转可点击链接（先 esc 保证安全）
+    body.innerHTML = esc(m.body)
+      .replace(/(@[\w\u4e00-\u9fa5.-]+\/[\w\u4e00-\u9fa5.\/\-() ]+)/g, '<span class="doc-ref">$1</span>')
+      .replace(/(https?:\/\/[^\s<>"']+)/g, '<a class="msg-link" href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
     row.appendChild(body);
     const toggle = document.createElement('button');
     toggle.className = 'expand-btn';

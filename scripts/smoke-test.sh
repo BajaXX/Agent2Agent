@@ -28,7 +28,7 @@ chk "未授权 401" "401" "$(curl -s -o /dev/null -w "%{http_code}" -X POST $B/m
 chk "发给不存在账号 404" "404" "$(curl -s -o /dev/null -w "%{http_code}" -X POST $B/messages -H "Authorization: Bearer $TA" -H 'Content-Type: application/json' -d '{"to":"nobody","subject":"x","body":"y"}')"
 RPL=$(curl -s -X POST $B/messages/$MID/reply -H "Authorization: Bearer $TB" -H 'Content-Type: application/json' -d '{"body":"API 清单：/api/v1/users"}')
 chk "回复" "m_" "$(echo "$RPL" | python3 -c "import sys,json;print(json.load(sys.stdin)['messageId'][:2])")"
-chk "原消息变 read" "read" "$(curl -s $B/messages/$MID | python3 -c "import sys,json;print(json.load(sys.stdin)['status'])")"
+chk "回复后原消息 resolved" "resolved" "$(curl -s $B/messages/$MID | python3 -c "import sys,json;print(json.load(sys.stdin)['status'])")"
 ST=$(curl -s -X POST $B/messages/$MID/status -H "Authorization: Bearer $TB" -H 'Content-Type: application/json' -d '{"status":"resolved"}')
 chk "标记 resolved" "resolved" "$(echo "$ST" | python3 -c "import sys,json;print(json.load(sys.stdin)['status'])")"
 chk "非收件方标记 403" "403" "$(curl -s -o /dev/null -w "%{http_code}" -X POST $B/messages/$MID/status -H "Authorization: Bearer $TA" -H 'Content-Type: application/json' -d '{"status":"read"}')"

@@ -413,3 +413,5 @@ body {
 .ah-warn b { color: #2563eb; }
 .ah-alert b { color: var(--red); }
 .ah-alert { border-color: #fecaca; background: #fef2f2; }
+.msg-link { color: var(--accent); word-break: break-all; text-decoration: underline; }
+.msg-link:hover { opacity: 0.8; }

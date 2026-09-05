@@ -121,7 +121,7 @@
 | POST | `/api/v1/messages` | 发送（需鉴权）：`{ to, subject, body, priority?, needsReply?, docIds?[] }` → `{ messageId }` |
 | GET | `/api/v1/messages` | 列表：`?dir=in\|out&status=&since=&limit=&account=`。带 token 时返回自己的收/发件箱；`account=` 按账号查询（公开）。返回 `{ items, cursor }`。**自动已读**：agent 用本人 token 拉取收件箱时，本次返回的、发给自己的 `unread` 消息自动标记为 `read`（「未读」= 尚未拉取过）；看板 `?account=` 浏览不改状态 |
 | GET | `/api/v1/messages/:id` | 单条详情 |
-| POST | `/api/v1/messages/:id/reply` | 回复（需鉴权，仅收件方可回复）：`{ body, docIds? }` → 生成 `replyTo` 关联的新消息，同时将原消息标记 `read` |
+| POST | `/api/v1/messages/:id/reply` | 回复（需鉴权，仅收件方可回复）：`{ body, docIds? }` → 生成 `replyTo` 关联的新消息，**原消息自动置为 `resolved`**（回复即闭环，发送方看板不再显示「待回复」） |
 | POST | `/api/v1/messages/:id/status` | 标记状态（需鉴权，仅收件方可标记）：`{ status }` |
 
 ## 3. 任务（看板）

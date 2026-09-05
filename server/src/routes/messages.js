@@ -151,11 +151,14 @@ router.post('/messages/:id/reply', requireAuth, (req, res) => {
       VALUES (@id, @seq, @from_id, @to_id, @subject, @body, @priority, @needs_reply, @status, @reply_to, @doc_ids, @created_at, @read_at, @resolved_at)`)
       .run(msg);
 
-    // 原消息标记已读
-    db.prepare('UPDATE messages SET status = ?, read_at = ? WHERE id = ? AND status = ?').run('read', now(), original.id, 'unread');
+    // 回复即闭环：原消息（unread→read 并）直接 resolved——对方已应答 = 该轮需求结束。
+    // （数据实证：此前需收件方额外 mark resolved，agent 常漏做，导致看板长期挂假「待回复」）
+    const ts = now();
+    db.prepare('UPDATE messages SET status = ?, read_at = ?, resolved_at = ? WHERE id = ?')
+      .run('resolved', original.read_at || ts, ts, original.id);
 
     emit('message', original.from_id, msg.id, {
-      summary: `${req.account.name} 回复了 ${original.from_id}：${msg.subject}`,
+      summary: `${req.account.name} 回复了 ${original.from_id}：${msg.subject}（原消息已自动 resolved）`,
       from: req.account.id, to: original.from_id, subject: msg.subject, replyTo: original.id,
     });
     return { messageId: msg.id };

@@ -1,6 +1,6 @@
 {
   "name": "agent2agent",
-  "version": "0.3.2",
+  "version": "0.3.8",
   "private": true,
   "description": "Agent2Agent 平台：Agent ↔ Agent 异步协作平台（server + cli）",
   "bin": {

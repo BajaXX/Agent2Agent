@@ -1032,65 +1032,77 @@ async function cmdCheckin(opts, ctx) {
     await api(config, 'POST', '/heartbeat', { body: { status: opts.status } });
   }
 
-  // 4) 输出摘要
+  // 4) 输出摘要（固定工作流引导：待你回复 → 你发出的等待 → 任务建议 → 记忆）
   const mem = res.memory || {};
   const pending = res.pending || {};
   const inboxItems = (res.inbox && res.inbox.items) || [];
-  const taskItems = (res.tasks && res.tasks.items) || [];
   const acct = res.account || {};
+
+  // 我的任务（全量，判滞留与来源关联）
+  const myTasks = toArray(await api(config, 'GET', '/tasks', { query: { account: ctx.config.accountId } }))
+    .filter((t) => t.status !== 'done');
+  // 我发出的、等待对方回复的消息（发送方视角：对方还没回应 → 该跟进/该建任务）
+  const outAll = toArray(await api(config, 'GET', '/messages', { query: { dir: 'out', limit: 100 } }));
+  const outWaiting = outAll.filter((m) => m.needsReply && m.status !== 'resolved');
 
   console.log('');
   console.log(hl('========== a2a checkin =========='));
-  console.log(`账号: ${acct.name || acct.id || ctx.config.accountId}   状态: ${acct.status || 'starting'}`);
-  console.log(`记忆版本: v${mem.version ?? 0}`);
-  // 记忆维护提示：空记忆 / 版本过低时提醒 agent 写回（记忆由 agent 自己维护）
+  console.log(`账号: ${acct.name || acct.id || ctx.config.accountId}   状态: ${acct.status || 'starting'}  平台 v${res.platformVersion || '?'}`);
   const memEmpty = !mem.content || !String(mem.content || '').trim();
-  if (memEmpty) {
-    console.log(paint(C.yellow, '  ⚠ 记忆为空：本账号尚无 memory.md。请在会话中/结束时把「进展、决策、待办、协作关系」整理成记忆文件，用 a2a memory set <file> 写回（跨会话保持上下文的关键）。'));
-  } else if ((mem.version || 0) < 2) {
-    console.log(paint(C.dim, '  （提示：建议每次会话结束前用 a2a memory set 更新记忆，保持 v' + (mem.version || 0) + ' → 演进）'));
-  }
-  // 待我回复的消息（发给我的、needsReply、未 resolved）—— 别人等待我回复
+  // 待我回复（别人等我） / 我发出的等待（我等别人） 双视角计数
   const needMyReply = inboxItems.filter((m) => m.needsReply && m.status !== 'resolved');
-  const unreadNow = (pending.unreadMessages ?? 0);
-  console.log(`未读消息: ${unreadNow} 条   待你回复: ${needMyReply.length} 条   待办任务: ${pending.todoTasks ?? taskItems.length} 个`);
+  console.log(`待你回复: ${needMyReply.length} 条   你发出等对方回复: ${outWaiting.length} 条   进行中任务: ${myTasks.length} 个`);
+  console.log(`收件箱新消息 ${inboxItems.length} 条（拉取即自动已读，读后不算未读）   记忆版本: v${mem.version ?? 0}`);
 
   console.log('');
-  console.log(paint(C.bold, '收件箱消息:'));
-  if (inboxItems.length === 0) {
-    console.log('  （无新消息）');
+  console.log(paint(C.bold, '① 待你回复（别人等待你——最高优先，回复后原消息自动 resolved，无需再手动 mark）:'));
+  if (needMyReply.length === 0) {
+    console.log('  （无）');
   } else {
-    inboxItems.forEach((m, i) => {
-      const needReply = m.needsReply && m.status !== 'resolved' ? ' ' + paint(C.yellow, '[需你回复]') : '';
-      console.log(`  [${i + 1}] ${m.subject || '(无主题)'} — 来自 ${m.from || '?'}${needReply}`);
+    needMyReply.forEach((m, i) => {
+      const age = m.createdAt ? Math.floor((Date.now() - m.createdAt) / 3600000) : 0;
+      console.log(`  [${i + 1}] ${m.subject || '(无主题)'} — 来自 ${m.from || '?'}（${age}h 前）`);
+      console.log(`      → a2a reply --msg ${m.id} --body "..."`);
     });
   }
 
   console.log('');
-  console.log(paint(C.bold, '我的任务（todo / doing / blocked）:'));
-  const myTasks = toArray(await api(config, 'GET', '/tasks', { query: { account: ctx.config.accountId } }))
-    .filter((t) => t.status !== 'done');
-  if (myTasks.length === 0) {
+  console.log(paint(C.bold, '② 你发出、等待对方回复（若对方长期未回应可跟进）:'));
+  if (outWaiting.length === 0) {
     console.log('  （无）');
+  } else {
+    const taskSrcIds = new Set(myTasks.map((t) => t.sourceMessageId).filter(Boolean));
+    outWaiting.forEach((m, i) => {
+      const age = m.createdAt ? Math.floor((Date.now() - m.createdAt) / 3600000) : 0;
+      const linked = taskSrcIds.has(m.id);
+      console.log(`  [${i + 1}] ${m.subject || '(无主题)'} → ${m.to || '?'}（${age}h 前）${linked ? '（已建任务）' : paint(C.yellow, '（未关联任务）')}`);
+            const hint = linked
+        ? '→ 对方回应后自动结束；如需催办 a2a send 跟进'
+        : '→ 若是一项需跟踪的工作，请建任务：a2a task new --title "..." --source-msg ' + m.id;
+      console.log('      ' + hint);
+    });
+  }
+
+  console.log('');
+  console.log(paint(C.bold, '③ 我的任务（todo / doing / blocked）:'));
+  if (myTasks.length === 0) {
+    console.log('  （无——收到需求类消息时请用 ②/① 中的命令建任务，任务是你自己的工作表）');
   } else {
     myTasks.forEach((t, i) => {
       const stayH = t.updatedAt ? Math.floor((Date.now() - t.updatedAt) / 3600000) : 0;
       const stay = stayH > 24
-        ? ' ' + paint(C.yellow, `（滞留 ${Math.floor(stayH / 24)}d${stayH % 24}h：若等待他人/人类介入请 a2a task update 标 blocked 并说明原因）`)
+        ? ' ' + paint(C.yellow, `（滞留 ${Math.floor(stayH / 24)}d${stayH % 24}h：若等待他人/人类介入请 a2a task update --id ${t.id} --status blocked --note 原因）`)
         : (stayH > 4 ? `（已 ${stayH}h）` : '');
       console.log(`  [${i + 1}] ${t.title || '(无标题)'}（${t.status || '?'}）${t.assigneeId ? '→ ' + t.assigneeId : ''}${stay}`);
+      console.log(`      → 推进: a2a task update --id ${t.id} --status done|doing|blocked --note 说明`);
     });
   }
 
   console.log('');
-  if (needMyReply.length > 0) {
-    console.log(paint(C.yellow, `→ 有 ${needMyReply.length} 条消息等待你回复：用 a2a inbox 查看后 a2a reply --msg ID --body "..."，处理完 a2a mark --msg ID --status resolved`));
-  }
-  if ((pending.todoTasks ?? 0) > 0 || myTasks.length > 0) {
-    console.log(paint(C.yellow, '→ 推进任务：a2a task list 查看 → 完成 a2a task update --id ID --status done --note 说明'));
+  if (memEmpty) {
+    console.log(paint(C.yellow, '→ 会话结束前固定动作：把「进展、决策、待办、协作关系」写回记忆 → a2a memory set <file>'));
   }
   console.log(hl('======================================='));
-
   // 更新检查（≤24h 一次；网络不可达静默跳过；有更新才提示）
   const lastCheck = state.lastUpdateCheckAt || 0;
   if (Date.now() - lastCheck > 24 * 3600 * 1000) {
