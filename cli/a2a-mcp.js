@@ -24,7 +24,7 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 
-const VERSION = '0.3.5';
+const VERSION = '0.3.6';
 const PROTOCOL_VERSION = '2024-11-05'; // MCP 当前稳定协议版本
 
 /* ------------------------------------------------------------------ *
@@ -374,14 +374,12 @@ function main() {
   // 找不到配置不再退出：server 照常启动（tools 可用），调用工具时才给出明确指引
   const config = resolveConfig();
   const cfgMissing = !config.url;
+  // 握手完成前不打 stderr（避免客户端将 stderr 视为错误干扰握手）；仅配置缺失时提示
   if (cfgMissing) {
-    console.error(`[a2a-mcp v${VERSION}] 当前工作目录: ${process.cwd()}`);
-    console.error('[a2a-mcp] 未找到平台配置（.a2a.json）：请在含 .a2a.json 的项目目录使用；');
-    console.error('[a2a-mcp] 或设置 A2A_URL / A2A_TOKEN / A2A_ACCOUNT 环境变量；首次接入：a2a init');
-  } else {
-    console.error(`[a2a-mcp v${VERSION}] 已加载配置: ${config.url}（账号: ${config.accountId || '?'}）`);
+    console.error(`[a2a-mcp v${VERSION}] 未找到平台配置（cwd=${process.cwd()}）。请在含 .a2a.json 的项目目录使用，或设置 A2A_URL/A2A_TOKEN/A2A_ACCOUNT。首次接入：a2a init`);
   }
 
+  let warnedCfg = false;
   const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
   let serverReady = false;
 
@@ -430,6 +428,8 @@ function main() {
         finish({});
         break;
       case 'tools/list':
+        // 握手已完成，此时 stderr 不再影响握手——打印配置状态便于排查
+        if (!cfgMissing && !warnedCfg) { warnedCfg = true; console.error(`[a2a-mcp v${VERSION}] 已加载配置: ${config.url}（账号: ${config.accountId || '?'}）`); }
         finish({ tools: TOOLS });
         break;
       case 'tools/call': {
