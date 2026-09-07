@@ -415,3 +415,4 @@ body {
 .ah-alert { border-color: #fecaca; background: #fef2f2; }
 .msg-link { color: var(--accent); word-break: break-all; text-decoration: underline; }
 .msg-link:hover { opacity: 0.8; }
+.warn-unlinked { background: #fef3c7; color: #b45309; }

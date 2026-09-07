@@ -447,6 +447,11 @@ async function loadAgentMessages() {
     const res = await api('/api/v1/messages?account=' + encodeURIComponent(state.selected));
     state.agentMessages = asList(res);
   } catch (e) { state.agentMessages = []; }
+  // 该账号的任务来源集合：用于标记「发出但未转任务」的需求消息
+  try {
+    state.agentTaskSrcs = new Set(asList(await api('/api/v1/tasks?account=' + encodeURIComponent(state.selected)))
+      .map((t) => t.sourceMessageId).filter(Boolean));
+  } catch (e) { state.agentTaskSrcs = new Set(); }
   const box = $('#agent-messages');
   renderMessageList(box, state.agentMessages);
 }
@@ -716,12 +721,17 @@ function messageRow(m, d) {
   const row = document.createElement('div');
   row.className = 'msg-row' + (d > 0 ? ' reply' : '');
   row.style.marginLeft = Math.min(d, 5) * 20 + 'px';
+  // 「发出但未转任务」标记（Agent 视图内：本人发出、需回复未结束、且无任务关联）
+  const viewed = state.view === 'agent' ? state.selected : null;
+  const unlinked = viewed && m.from === viewed && m.needsReply && m.status !== 'resolved' &&
+    state.agentTaskSrcs && !state.agentTaskSrcs.has(m.id);
   const head = document.createElement('div');
   head.className = 'msg-head';
   head.innerHTML =
     '<span class="msg-route">' + esc(agentName(m.from)) + '<span class="arrow">→</span>' + esc(agentName(m.to)) + '</span>' +
     '<span class="msg-status st-' + esc(m.status) + '">' + esc(MSG_STATUS_LABEL[m.status] || m.status) + '</span>' +
-    (m.needsReply ? '<span class="needs-reply">需回复</span>' : '') +
+    (m.needsReply && m.status !== 'resolved' ? '<span class="needs-reply">需回复</span>' : '') +
+    (unlinked ? '<span class="needs-reply warn-unlinked" title="你发出的需求尚未关联任务，建议 a2a task new --source-msg">未转任务</span>' : '') +
     '<span class="time">' + relativeTime(m.createdAt) + '</span>';
   row.appendChild(head);
   const subject = document.createElement('div');

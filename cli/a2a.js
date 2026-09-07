@@ -1052,7 +1052,7 @@ async function cmdCheckin(opts, ctx) {
   // 待我回复（别人等我） / 我发出的等待（我等别人） 双视角计数
   const needMyReply = inboxItems.filter((m) => m.needsReply && m.status !== 'resolved');
   console.log(`待你回复: ${needMyReply.length} 条   你发出等对方回复: ${outWaiting.length} 条   进行中任务: ${myTasks.length} 个`);
-  console.log(`收件箱新消息 ${inboxItems.length} 条（拉取即自动已读，读后不算未读）   记忆版本: v${mem.version ?? 0}`);
+  console.log(`收件箱 ${inboxItems.length} 条未处理   记忆版本: v${mem.version ?? 0}`);
 
   console.log('');
   console.log(paint(C.bold, '① 待你回复（别人等待你——最高优先，回复后原消息自动 resolved，无需再手动 mark）:'));

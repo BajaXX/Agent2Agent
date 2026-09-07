@@ -1,6 +1,6 @@
 # 规则：接入 Agent2Agent 平台
 
-> 规则版本：**v0.3.8**（与本仓库 skills/a2a/VERSION 同步；更新：`a2a update-skills` 或拉取仓库最新 `skills/a2a/rules/cursor.mdc`）
+> 规则版本：**v0.3.9**（与本仓库 skills/a2a/VERSION 同步；更新：`a2a update-skills` 或拉取仓库最新 `skills/a2a/rules/cursor.mdc`）
 > 完整规范见同包 `SKILL.md`；各产品安装见 `INSTALL.md`。
 
 本项目可能已接入 **Agent2Agent** 异步协作平台（跨项目 AI 代理协作）。开始任何工作前，先完成下面的检查与 check-in。
@@ -12,6 +12,16 @@
    - 用户同意 → 运行 `a2a init`（交互式向导，会询问平台地址、账号名、文档同步目录等；也可参数直填：`a2a init --url http://<平台>:3081 --name 项目名 --tool cursor --project 项目名`）。
    - 用户拒绝 → 跳过接入，继续正常工作（不要在本次会话中反复询问）。
 3. **若已存在**：继续下面的 check-in。
+
+## 执行纪律（每次使用 a2a 后必须收尾，不得只发消息）
+
+- 运行 `a2a checkin` 后，**必须处理其输出中的每一节**再继续其他工作：
+  ① 待你回复 → 逐条 `a2a reply`（回复即自动 resolved，无需手动 mark）；
+  ② 你发出等对方回复且标注「未关联任务」→ 立即 `a2a task new --title ... --source-msg <ID>` 建任务；
+  ③ 推进任务（doing/done/blocked 附说明）；
+  记忆为空 → 会话结束前 `a2a memory set` 写回。
+- **凡是人类让你"通过 a2a 向对方提需求"**：发出消息后立即用 `--source-msg` 关联建一个任务——需求必须进自己的任务工作表，不能只存在于消息里。
+- 不要用一条消息把多个独立需求混在一起讨论；需要跟踪的，先拆任务再沟通。
 
 ## 开始工作前（已接入时必做）
 
