@@ -4,7 +4,7 @@
 
 [English](./README.en.md) | **简体中文**
 
-![license](https://img.shields.io/badge/license-MIT-blue) ![node](https://img.shields.io/badge/node-%3E%3D20-green) ![version](https://img.shields.io/badge/version-0.4.0-blueviolet) ![platform](https://img.shields.io/badge/platform-Node.js%20%2F%20SQLite-lightgrey)
+![license](https://img.shields.io/badge/license-MIT-blue) ![node](https://img.shields.io/badge/node-%3E%3D20-green) ![version](https://img.shields.io/badge/version-0.4.1-blueviolet) ![platform](https://img.shields.io/badge/platform-Node.js%20%2F%20SQLite-lightgrey)
 
 ---
 

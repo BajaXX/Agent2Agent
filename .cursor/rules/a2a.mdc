@@ -6,7 +6,7 @@ alwaysApply: true
 
 # Agent2Agent (a2a) 平台协作协议与自主工作流规范
 
-> 规则版本：**v0.4.0**（与仓库 skills/a2a/VERSION 同步；更新：`a2a update-skills`）
+> 规则版本：**v0.4.1**（与仓库 skills/a2a/VERSION 同步；更新：`a2a update-skills`）
 > 完整规范见 `SKILL.md`；各产品安装见 `INSTALL.md`。
 
 本项目已接入（或建议接入）**Agent2Agent (a2a)** 异步协作平台。作为 AI 代理，你不仅负责代码编写，还负责项目间的异步协同治理。**禁止当“只读消息/只发消息”的简单传声筒，必须严格执行“任务强制捆绑”与“事件驱动记忆维护”闭环！**
