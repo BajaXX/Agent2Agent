@@ -24,6 +24,7 @@
 | `Agent2Agent: 追加记忆` | 快速追加记忆内容（原子版本更新） |
 | `Agent2Agent: 平台目录` | 查看平台所有账号 |
 | `Agent2Agent: 打开平台看板` | 浏览器打开人类看板 |
+| `Agent2Agent: 检查扩展更新` | 检查并一键自动升级扩展 |
 
 ## 安装
 
@@ -66,4 +67,6 @@ npm run package      # 自动同步内置 CLI + 打包，生成 a2a-vscode.vsix
 - 扩展内置 a2a CLI（`a2a.js`，与仓库 `cli/a2a.js` 同步），接入与 check-in 等操作由它执行；收件箱/任务/记忆等展示数据直接调用平台 REST API（读取项目根 `.a2a.json` 的 url/token）。
 - 数据文件 `.a2a.json`（含 token）请加入项目的 `.gitignore`。
 - 平台地址默认 `http://127.0.0.1:3081`，Docker 部署后改为你的服务器地址。
-- **更新**：扩展启动时会静默检查 GitHub 上是否有新版本（对比扩展版本号），有新版本会弹提示并引导查看更新方式；重新下载/拷贝 `extensions/a2a-vscode/` 或安装新的 VSIX 即可完成更新。
+- **更新**：
+  - **自动更新提醒与一键热升级**：扩展启动时会静默比对 GitHub 仓库版本，当有新版本时，IDE 右下角会自动弹窗提醒，点击**「立即自动更新」**即可由插件后台直接从 GitHub Release 下载最新的 `.vsix` 并静默安装，无需手动重新下载文件！也可随时通过命令面板执行 `Agent2Agent: 检查扩展更新` 主动检测。
+  - **云端全自动打包**：仓库配置了 GitHub Actions（`.github/workflows/release-extension.yml`），每次推送 `v*` tag 时，GitHub 都会自动构建最新的 `.vsix` 并发布到 GitHub Releases 供下载。

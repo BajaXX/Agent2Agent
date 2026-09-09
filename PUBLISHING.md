@@ -40,3 +40,24 @@ npx --yes agent2agent-cli help
 
 - GitHub：仓库 → Actions → Publish to npm 工作流绿色通过
 - npm：https://www.npmjs.com/package/agent2agent-cli 出现新版本，且带 **Provenance（来源证明）** 徽标
+
+---
+
+## VSCode / Cursor 扩展发布（GitHub Releases 自动化）
+
+VSCode 扩展（`extensions/a2a-vscode`）同样通过 **GitHub Actions** 自动化构建与发布。
+
+### 自动化流程
+每次向 GitHub 推送 `v*` tag 时，GitHub Actions（`.github/workflows/release-extension.yml`）会自动运行：
+1. 安装依赖并自动同步最新 `cli/a2a.js` 到扩展；
+2. 依据当前 Git Tag 自动同步扩展版本号；
+3. 执行 `vsce package` 构建出 `a2a-vscode.vsix`；
+4. 自动创建 GitHub Release，将 `.vsix` 文件上传到 Release Assets 中；
+5. 同时生成 Artifact 供 GitHub 页面直接下载。
+
+### 客户端一键升级体验
+用户安装过一次扩展后：
+- 每次打开 Cursor / VSCode，扩展会自动检测 GitHub 上的最新版本；
+- 检测到新版时，IDE 右下角自动弹窗：**“发现新版本，是否立即自动更新？”**；
+- 点击「立即自动更新」，扩展直接后台从 GitHub Release 下载新版 `.vsix` 并静默安装，提示重载窗口即可生效。
+- 也可以随时在命令面板运行 `Agent2Agent: 检查扩展更新` 主动检测。

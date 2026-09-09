@@ -1,0 +1,70 @@
+name: Release VSCode Extension
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        working-directory: extensions/a2a-vscode
+        run: npm ci
+
+      - name: Sync CLI to extension
+        working-directory: extensions/a2a-vscode
+        run: npm run sync-cli
+
+      - name: Determine version
+        id: get_version
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            VER="${GITHUB_REF_NAME#v}"
+          else
+            VER=$(node -p "require('./extensions/a2a-vscode/package.json').version")
+          fi
+          echo "VERSION=$VER" >> $GITHUB_OUTPUT
+
+      - name: Sync version in package.json
+        working-directory: extensions/a2a-vscode
+        run: |
+          node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));p.version='${{ steps.get_version.outputs.VERSION }}';fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n')"
+
+      - name: Package VSIX
+        working-directory: extensions/a2a-vscode
+        run: |
+          npx @vscode/vsce package --out a2a-vscode.vsix
+          cp a2a-vscode.vsix a2a-vscode-${{ steps.get_version.outputs.VERSION }}.vsix
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: a2a-vscode-vsix
+          path: extensions/a2a-vscode/a2a-vscode.vsix
+
+      - name: Release VSIX
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            extensions/a2a-vscode/a2a-vscode.vsix
+            extensions/a2a-vscode/a2a-vscode-${{ steps.get_version.outputs.VERSION }}.vsix
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

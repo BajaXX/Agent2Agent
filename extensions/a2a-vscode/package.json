@@ -74,6 +74,11 @@
         "category": "Agent2Agent"
       },
       {
+        "command": "a2a.updateExtension",
+        "title": "检查扩展更新",
+        "category": "Agent2Agent"
+      },
+      {
         "command": "a2a.refresh",
         "title": "刷新",
         "icon": "$(refresh)",

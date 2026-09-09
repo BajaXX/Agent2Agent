@@ -406,6 +406,7 @@ function activate(context) {
   register('a2a.memoryAppend', cmdMemoryAppend);
   register('a2a.agents', cmdAgents);
   register('a2a.dashboard', cmdDashboard);
+  register('a2a.updateExtension', () => checkExtensionUpdate(true));
   register('a2a.refresh', refreshAll);
 
   // 状态栏
@@ -443,20 +444,114 @@ function activate(context) {
   setTimeout(() => { checkExtensionUpdate().catch(() => {}); }, 5000);
 }
 
-/** 静默检查扩展是否有新版本（对比 GitHub 仓库中的扩展版本） */
-async function checkExtensionUpdate() {
-  const current = require('./package.json').version || '0.0.0';
-  const res = await fetch('https://raw.githubusercontent.com/BajaXX/Agent2Agent/main/extensions/a2a-vscode/package.json');
-  if (!res.ok) return;
-  const latest = (await res.json()).version;
-  if (!latest || latest === current) return;
-  const ans = await vscode.window.showInformationMessage(
-    'Agent2Agent 扩展有新版本 v' + latest + '（当前 v' + current + '），是否查看更新方式？',
-    '查看更新方式', '暂不'
-  );
-  if (ans === '查看更新方式') {
-    vscode.env.openExternal(vscode.Uri.parse('https://github.com/BajaXX/Agent2Agent/blob/main/extensions/a2a-vscode/README.md'));
+/** 比较 semver 版本号（x.y.z） */
+function cmpSemver(a, b) {
+  const pa = String(a || '').replace(/^v/, '').split('.').map(Number);
+  const pb = String(b || '').replace(/^v/, '').split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    const x = pa[i] || 0;
+    const y = pb[i] || 0;
+    if (x !== y) return x > y ? 1 : -1;
   }
+  return 0;
+}
+
+/** 检查扩展新版本（支持静默检测与手动命令触发） */
+async function checkExtensionUpdate(manual = false) {
+  const current = require('./package.json').version || '0.0.0';
+  let latest = null;
+  try {
+    const res = await fetch('https://raw.githubusercontent.com/BajaXX/Agent2Agent/main/extensions/a2a-vscode/package.json');
+    if (res.ok) {
+      const data = await res.json();
+      latest = data.version;
+    }
+  } catch (e) {
+    if (manual) showError('检查更新失败：网络连接超时或无法访问 GitHub。');
+    return;
+  }
+
+  if (!latest) {
+    if (manual) showError('检查更新失败：无法获取最新版本信息。');
+    return;
+  }
+
+  if (cmpSemver(latest, current) <= 0) {
+    if (manual) vscode.window.showInformationMessage(`当前 Agent2Agent 扩展已是最新版本 (v${current})。`);
+    return;
+  }
+
+  const ans = await vscode.window.showInformationMessage(
+    `Agent2Agent 扩展发现新版本 v${latest}（当前 v${current}），是否立即自动更新？`,
+    '立即自动更新', '查看更新日志', '暂不'
+  );
+
+  if (ans === '立即自动更新') {
+    await installExtensionFromRelease(latest);
+  } else if (ans === '查看更新日志') {
+    vscode.env.openExternal(vscode.Uri.parse('https://github.com/BajaXX/Agent2Agent/releases'));
+  }
+}
+
+/** 从 GitHub Release 下载最新 vsix 并直接在 IDE 中静默安装更新 */
+async function installExtensionFromRelease(targetVersion) {
+  const os = require('os');
+  const downloadUrls = [
+    `https://github.com/BajaXX/Agent2Agent/releases/download/v${targetVersion}/a2a-vscode.vsix`,
+    `https://github.com/BajaXX/Agent2Agent/releases/download/v${targetVersion}/a2a-vscode-${targetVersion}.vsix`,
+    `https://github.com/BajaXX/Agent2Agent/releases/latest/download/a2a-vscode.vsix`,
+  ];
+
+  await vscode.window.withProgress({
+    location: vscode.ProgressLocation.Notification,
+    title: `正在下载并安装 Agent2Agent 扩展 v${targetVersion}…`,
+    cancellable: false,
+  }, async (progress) => {
+    progress.report({ message: '正在从 GitHub 下载最新 vsix 安装包...' });
+    let res = null;
+    for (const url of downloadUrls) {
+      try {
+        const r = await fetch(url);
+        if (r.ok) {
+          res = r;
+          break;
+        }
+      } catch (e) {
+        // 重试下一个候选 URL
+      }
+    }
+
+    if (!res) {
+      const ans = await vscode.window.showErrorMessage(
+        '从 GitHub Release 下载扩展失败，可能是网络问题或版本资产尚未就绪。',
+        '手动前往下载'
+      );
+      if (ans === '手动前往下载') {
+        vscode.env.openExternal(vscode.Uri.parse('https://github.com/BajaXX/Agent2Agent/releases'));
+      }
+      return;
+    }
+
+    progress.report({ message: '下载完成，正在自动安装...' });
+    const buffer = Buffer.from(await res.arrayBuffer());
+    const tmpFile = path.join(os.tmpdir(), `a2a-vscode-${targetVersion}-${Date.now()}.vsix`);
+    fs.writeFileSync(tmpFile, buffer);
+
+    try {
+      await vscode.commands.executeCommand('workbench.extensions.installExtension', vscode.Uri.file(tmpFile));
+      try { fs.unlinkSync(tmpFile); } catch (e) { /* ignore */ }
+
+      const reloadAns = await vscode.window.showInformationMessage(
+        `Agent2Agent 扩展已成功升级至 v${targetVersion}！重新加载窗口即可生效。`,
+        '重新加载窗口', '稍后'
+      );
+      if (reloadAns === '重新加载窗口') {
+        await vscode.commands.executeCommand('workbench.action.reloadWindow');
+      }
+    } catch (e) {
+      showError('安装扩展失败: ' + (e.message || e));
+    }
+  });
 }
 
 function deactivate() {}
