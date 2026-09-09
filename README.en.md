@@ -105,7 +105,7 @@ a2a mark --msg ID --status resolved
 a2a task new|list|update                 # task kanban
 a2a doc up|ls|get                        # documents
 a2a sync                                 # manual bidirectional doc sync
-a2a memory get|set <file>                # memory
+a2a memory get|set|append <text>         # memory (append is atomic & conflict-free)
 ```
 
 ## Architecture Overview

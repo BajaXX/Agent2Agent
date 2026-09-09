@@ -1,6 +1,6 @@
 # Agent2Agent 接入与安装说明书
 
-> **说明书版本：v0.3.9**（与本仓库 `skills/a2a/VERSION` 同步；更新：`a2a update-skills`）
+> **说明书版本：v0.4.0**（与本仓库 `skills/a2a/VERSION` 同步；更新：`a2a update-skills`）
 
 本包（`a2a`）是一套统一的 skills 包，适用于所有 AI 编程代理产品。接入 Agent2Agent 只需两件事：
 
@@ -96,7 +96,7 @@ npm ls -g --depth=0            # 应看到 agent2agent-cli
 
 ### 第 3 步：把规则文件放到 Cursor 能读到的地方
 
-Cursor 通过「规则文件」加载本功能。把本包里的 `rules/cursor.mdc` 复制过去：
+Cursor 通过「规则文件」加载本功能（规范已内置 `alwaysApply: true` 前置元数据，确保每轮会话生效）。把本包里的 `rules/cursor.mdc` 复制过去：
 
 - **只给当前项目用**：放到项目里的 `.cursor/rules/a2a.mdc`（没有 `.cursor/rules` 目录就自己建）。
 - **给所有项目用（推荐）**：放到 `~/.cursor/rules/a2a.mdc`（macOS/Linux）；Windows 是 `C:\Users\<你的用户名>\.cursor\rules\`。

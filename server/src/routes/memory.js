@@ -62,6 +62,45 @@ router.put('/memory', requireAuth, (req, res) => {
   });
 });
 
+/** POST /api/v1/memory/append — 快速追加记忆（需鉴权，原子自增版本防冲突） */
+router.post('/memory/append', requireAuth, (req, res) => {
+  withIdempotency(req, res, () => {
+    const { content, text, note } = req.body || {};
+    const appendText = typeof content === 'string' ? content.trim() : (typeof text === 'string' ? text.trim() : '');
+    if (!appendText) return err(res, 400, 'content 或 text 必填（string）');
+
+    const accountId = req.account.id;
+    const cur = currentMemory(accountId);
+    const original = cur.content || '';
+
+    const pad = (n) => String(n).padStart(2, '0');
+    const d = new Date();
+    const ts = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+    let block = '';
+    if (appendText.startsWith('#') || appendText.startsWith('- [') || appendText.startsWith(`[${d.getFullYear()}`)) {
+      block = `\n\n${appendText}\n`;
+    } else {
+      block = `\n\n- [${ts}] ${appendText}\n`;
+    }
+
+    const newContent = (original ? original.trimEnd() : `# ${req.account.name || accountId} 记忆`) + block;
+    const newVersion = cur.version + 1;
+    const noteStr = typeof note === 'string' && note.trim() ? note.trim() : `追加记忆 [${ts}]`;
+
+    const db = getDb();
+    db.prepare('INSERT INTO memory_versions (id, account_id, version, content, note, updated_at) VALUES (?,?,?,?,?,?)')
+      .run(genId('mv'), accountId, newVersion, newContent, noteStr, now());
+    storage.writeMemoryFile(accountId, newContent);
+
+    emit('memory', accountId, null, {
+      summary: `${req.account.name || accountId} 追加记忆 → v${newVersion}`,
+      version: newVersion,
+    });
+    return { content: newContent, version: newVersion, appended: appendText };
+  });
+});
+
 /** GET /api/v1/memory/versions — 版本历史（公开 ?account= 或鉴权） */
 router.get('/memory/versions', optionalAuth, (req, res) => {
   let accountId = null;

@@ -1055,19 +1055,23 @@ async function cmdCheckin(opts, ctx) {
   console.log(`收件箱 ${inboxItems.length} 条未处理   记忆版本: v${mem.version ?? 0}`);
 
   console.log('');
-  console.log(paint(C.bold, '① 待你回复（别人等待你——最高优先，回复后原消息自动 resolved，无需再手动 mark）:'));
+  console.log(paint(C.bold, '① 待你回复（来自他人的事项/需求 — 最高优先级）:'));
   if (needMyReply.length === 0) {
     console.log('  （无）');
   } else {
     needMyReply.forEach((m, i) => {
       const age = m.createdAt ? Math.floor((Date.now() - m.createdAt) / 3600000) : 0;
-      console.log(`  [${i + 1}] ${m.subject || '(无主题)'} — 来自 ${m.from || '?'}（${age}h 前）`);
-      console.log(`      → a2a reply --msg ${m.id} --body "..."`);
+      const cleanSubj = (m.subject || '处理事项').replace(/["`]/g, '');
+      console.log(`  [${i + 1}] ${m.subject || '(无主题)'} — 来自 ${m.from || '?'}（${age}h 前）[ID: ${m.id}]`);
+      console.log(`      ⚡ 若为新需求/任务，必须先创建任务并认领：`);
+      console.log(`         a2a task new --title "${cleanSubj}" --source-msg ${m.id}`);
+      console.log(`      ⚡ 处理完成或需要答复时执行（原消息自动 resolved）：`);
+      console.log(`         a2a reply --msg ${m.id} --body "..."`);
     });
   }
 
   console.log('');
-  console.log(paint(C.bold, '② 你发出、等待对方回复（若对方长期未回应可跟进）:'));
+  console.log(paint(C.bold, '② 你发出、等待对方回复（需跟进/推进）:'));
   if (outWaiting.length === 0) {
     console.log('  （无）');
   } else {
@@ -1075,32 +1079,40 @@ async function cmdCheckin(opts, ctx) {
     outWaiting.forEach((m, i) => {
       const age = m.createdAt ? Math.floor((Date.now() - m.createdAt) / 3600000) : 0;
       const linked = taskSrcIds.has(m.id);
-      console.log(`  [${i + 1}] ${m.subject || '(无主题)'} → ${m.to || '?'}（${age}h 前）${linked ? '（已建任务）' : paint(C.yellow, '（未关联任务）')}`);
-            const hint = linked
-        ? '→ 对方回应后自动结束；如需催办 a2a send 跟进'
-        : '→ 若是一项需跟踪的工作，请建任务：a2a task new --title "..." --source-msg ' + m.id;
-      console.log('      ' + hint);
+      const cleanSubj = (m.subject || '需求').replace(/["`]/g, '');
+      console.log(`  [${i + 1}] ${m.subject || '(无主题)'} → ${m.to || '?'}（${age}h 前）${linked ? '（已建任务跟踪）' : paint(C.red, '【🚨 未关联任务】')}`);
+      if (!linked) {
+        console.log(`      ⚡ [AGENT 必做动作] 此跨项目需求尚未在本地建卡！请立即执行：`);
+        console.log(`         a2a task new --title "跟进: ${cleanSubj}" --source-msg ${m.id}`);
+      } else {
+        console.log('      → 对方回应后自动结束；如需催办：a2a send 跟进');
+      }
     });
   }
 
   console.log('');
   console.log(paint(C.bold, '③ 我的任务（todo / doing / blocked）:'));
   if (myTasks.length === 0) {
-    console.log('  （无——收到需求类消息时请用 ②/① 中的命令建任务，任务是你自己的工作表）');
+    console.log('  （无 — 收到需求类消息时请执行上方 ①/② 中的命令建任务，任务是你自己的工作表）');
   } else {
     myTasks.forEach((t, i) => {
       const stayH = t.updatedAt ? Math.floor((Date.now() - t.updatedAt) / 3600000) : 0;
       const stay = stayH > 24
         ? ' ' + paint(C.yellow, `（滞留 ${Math.floor(stayH / 24)}d${stayH % 24}h：若等待他人/人类介入请 a2a task update --id ${t.id} --status blocked --note 原因）`)
         : (stayH > 4 ? `（已 ${stayH}h）` : '');
-      console.log(`  [${i + 1}] ${t.title || '(无标题)'}（${t.status || '?'}）${t.assigneeId ? '→ ' + t.assigneeId : ''}${stay}`);
-      console.log(`      → 推进: a2a task update --id ${t.id} --status done|doing|blocked --note 说明`);
+      console.log(`  [${i + 1}] [${t.id}] ${t.title || '(无标题)'}（${t.status || '?'}）${t.assigneeId ? '→ ' + t.assigneeId : ''}${stay}`);
+      console.log(`      → 推进: a2a task update --id ${t.id} --status doing|done|blocked --note "说明"`);
     });
   }
 
   console.log('');
+  console.log(paint(C.bold, '④ 记忆沉淀（关键里程碑自动记录）:'));
   if (memEmpty) {
-    console.log(paint(C.yellow, '→ 会话结束前固定动作：把「进展、决策、待办、协作关系」写回记忆 → a2a memory set <file>'));
+    console.log(paint(C.yellow, '  ⚠️ 当前记忆为空！完成任何关键任务或技术决策后，请立即执行：'));
+    console.log(paint(C.yellow, '     a2a memory append "初始化/关键进展说明"'));
+  } else {
+    console.log(`  当前记忆版本: v${mem.version ?? 0}。任务完成或方案确立时，请立即追加记忆：`);
+    console.log(`     a2a memory append "完成/决策事项说明"`);
   }
   console.log(hl('======================================='));
   // 更新检查（≤24h 一次；网络不可达静默跳过；有更新才提示）
@@ -1136,6 +1148,10 @@ async function cmdSend(opts, ctx) {
   const res = await api(ctx.config, 'POST', '/messages', { body: payload });
   const id = res.messageId || res.id;
   console.log(`已发送消息 ${hl(id)} → ${to}（主题: ${subject}）`);
+  if (opts['need-reply']) {
+    console.log(paint(C.yellow, '💡 [工作流提醒] 该消息已设置需要回复。请立即在本地建跟踪任务：'));
+    console.log(paint(C.yellow, `   a2a task new --title "跟进: ${subject}" --source-msg ${id}`));
+  }
 }
 
 async function cmdInbox(opts, ctx, dir) {
@@ -1176,6 +1192,10 @@ async function cmdReply(opts, ctx) {
   const res = await api(ctx.config, 'POST', `/messages/${id}/reply`, { body: payload });
   const mid = res.messageId || res.id || '';
   console.log(`已回复消息 ${id}${mid ? ` → 新消息 ${hl(mid)}` : ''}`);
+  console.log(paint(C.dim, '（原消息已由平台自动置为 resolved）'));
+  console.log(paint(C.yellow, '💡 [工作流提醒] 若此答复完成了需求交接或技术决策，请立即记入记忆：'));
+  const excerpt = (body || '').replace(/[\r\n]+/g, ' ').trim();
+  console.log(paint(C.yellow, `   a2a memory append "已完成/答复: ${excerpt.length > 35 ? excerpt.slice(0, 35) + '...' : excerpt}"`));
 }
 
 async function cmdMark(opts, ctx) {
@@ -1231,7 +1251,14 @@ async function cmdTaskUpdate(opts, ctx) {
   if (opts.assignee) payload.assigneeId = opts.assignee;
   if (Object.keys(payload).length === 0) fail('task update 至少需要 --status / --note / --assignee 之一');
   await api(ctx.config, 'PATCH', `/tasks/${id}`, { body: payload });
-  console.log(`任务 ${id} 已更新`);
+  console.log(`任务 ${id} 已更新${opts.status ? ` → ${opts.status}` : ''}`);
+  if (opts.status === 'done') {
+    console.log(paint(C.green, '🎉 [工作流提醒] 任务已标记完成！请立即总结关键成果并写入记忆：'));
+    console.log(paint(C.yellow, `   a2a memory append "完成任务 [${id}]: ${opts.note || '已达成目标'}"`));
+  } else if (opts.status === 'blocked') {
+    console.log(paint(C.yellow, '⚠️ [工作流提醒] 任务已阻塞。如需对方协助，请发消息跟进：'));
+    console.log(paint(C.yellow, `   a2a send --to <对方账号> --subject "任务阻塞协助" --body "${opts.note || '请协助查看'}" --need-reply`));
+  }
 }
 
 async function cmdDocUp(opts, ctx, pos) {
@@ -1349,23 +1376,93 @@ async function cmdMemoryGet(ctx) {
   if (content && !content.endsWith('\n')) process.stdout.write('\n');
 }
 
-async function cmdMemorySet(ctx, pos) {
-  const file = pos[0];
-  if (!file) fail('memory set 需要 <文件路径>');
-  const abs = path.resolve(process.cwd(), file);
-  if (!fs.existsSync(abs)) fail(`文件不存在: ${file}`);
-  const content = fs.readFileSync(abs, 'utf8');
+async function cmdMemorySet(ctx, pos, opts) {
+  let content = '';
+  if (opts && opts.content) {
+    content = String(opts.content);
+  } else if (pos[0] === '-') {
+    content = fs.readFileSync(0, 'utf8');
+  } else if (pos[0]) {
+    const file = pos[0];
+    const abs = path.resolve(process.cwd(), file);
+    if (fs.existsSync(abs) && fs.statSync(abs).isFile()) {
+      content = fs.readFileSync(abs, 'utf8');
+    } else {
+      content = pos.join(' ');
+    }
+  } else {
+    fail('memory set 需要 <文件路径>，或使用 - 从标准输入读取，或使用 --content "内容"');
+  }
 
   const cur = await api(ctx.config, 'GET', '/memory');
   const version = cur.version ?? 0;
+  const note = opts && opts.note ? String(opts.note) : '';
 
   try {
-    const res = await api(ctx.config, 'PUT', '/memory', { body: { content, version } });
+    const res = await api(ctx.config, 'PUT', '/memory', { body: { content, version, note } });
     const newVer = res.version != null ? res.version : version + 1;
     console.log(`已更新记忆到 v${newVer}`);
   } catch (e) {
     if (e instanceof ApiError && e.status === 409) {
-      fail(`记忆版本冲突（当前平台版本 v${cur.version ?? '?'}）。请先 a2a memory get 获取最新内容并合并，再重新 a2a memory set。`);
+      fail(`记忆版本冲突（当前平台版本 v${cur.version ?? '?'}）。请先 a2a memory get 获取最新内容并合并，或使用 a2a memory append 快速追加。`);
+    }
+    throw e;
+  }
+}
+
+async function cmdMemoryAppend(ctx, pos, opts) {
+  let text = '';
+  if (opts && opts.content) {
+    text = String(opts.content);
+  } else if (pos[0] === '-') {
+    text = fs.readFileSync(0, 'utf8');
+  } else if (pos[0]) {
+    const abs = path.resolve(process.cwd(), pos[0]);
+    if (fs.existsSync(abs) && fs.statSync(abs).isFile()) {
+      text = fs.readFileSync(abs, 'utf8');
+    } else {
+      text = pos.join(' ');
+    }
+  } else {
+    fail('memory append 需要追加的内容或文件路径，如：a2a memory append "完成用户模块联调"');
+  }
+
+  text = text.trim();
+  if (!text) fail('追加的内容不能为空');
+
+  const note = opts && opts.note ? String(opts.note) : '';
+
+  // 1) 优先调用服务端原生 POST /api/v1/memory/append（原子、无冲突）
+  try {
+    const res = await api(ctx.config, 'POST', '/memory/append', { body: { content: text, note } });
+    const newVer = res.version != null ? res.version : '?';
+    console.log(hl(`已追加记忆 → v${newVer}`));
+    console.log(paint(C.dim, `内容: ${text.length > 80 ? text.slice(0, 80) + '...' : text}`));
+    return;
+  } catch (e) {
+    if (!(e instanceof ApiError && e.status === 404)) {
+      throw e;
+    }
+  }
+
+  // 2) 降级兼容旧版服务端：GET + PUT
+  const cur = await api(ctx.config, 'GET', '/memory');
+  const version = cur.version ?? 0;
+  const original = cur.content || '';
+  const pad = (n) => String(n).padStart(2, '0');
+  const d = new Date();
+  const ts = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const block = text.startsWith('#') || text.startsWith('- [') ? `\n\n${text}\n` : `\n\n- [${ts}] ${text}\n`;
+  const newContent = (original ? original.trimEnd() : `# 记忆`) + block;
+
+  try {
+    const res = await api(ctx.config, 'PUT', '/memory', { body: { content: newContent, version, note: note || `追加记忆 [${ts}]` } });
+    const newVer = res.version != null ? res.version : version + 1;
+    console.log(hl(`已追加记忆 → v${newVer}（兼容模式）`));
+    console.log(paint(C.dim, `内容: ${text.length > 80 ? text.slice(0, 80) + '...' : text}`));
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 409) {
+      fail(`记忆版本冲突（当前平台版本 v${cur.version ?? '?'}）。请稍后重试。`);
     }
     throw e;
   }
@@ -1407,7 +1504,7 @@ function printHelp() {
     ['task', '任务看板（new / list / update）'],
     ['doc', '文档（up / ls / get）'],
     ['sync', '双向镜像同步本地 doc 目录 ↔ 平台'],
-    ['memory', '记忆（get / set）'],
+    ['memory', '记忆（get / set / append）'],
     ['heartbeat', '心跳'],
     ['update-check', '检查各组件是否有新版本'],
     ['update', '一键更新 CLI + skills'],
@@ -1441,7 +1538,8 @@ function printHelp() {
   console.log('  a2a doc get <id> [--out FILE] [--inline]');
   console.log('  a2a sync');
   console.log('  a2a memory get');
-  console.log('  a2a memory set <file>');
+  console.log('  a2a memory set <file|-|--content>');
+  console.log('  a2a memory append <text|file> [--note N]  # 快速追加记忆（原子防冲突）');
   console.log('  a2a heartbeat [--status S] [--note N]');
   console.log('  a2a update-check / a2a self-update   # 检查更新 / 更新 CLI 自身');
 
@@ -1566,8 +1664,9 @@ async function main() {
       break;
     case 'memory':
       if (sub === 'get') await cmdMemoryGet(ctx);
-      else if (sub === 'set') await cmdMemorySet(ctx, pos.slice(2));
-      else fail('memory 子命令: get | set（用 a2a help 查看用法）');
+      else if (sub === 'set') await cmdMemorySet(ctx, pos.slice(2), opts);
+      else if (sub === 'append') await cmdMemoryAppend(ctx, pos.slice(2), opts);
+      else fail('memory 子命令: get | set | append（用 a2a help 查看用法）');
       break;
     default:
       fail(`未知命令: ${cmd}（用 a2a help 查看全部命令）`);

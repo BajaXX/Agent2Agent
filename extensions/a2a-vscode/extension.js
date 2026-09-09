@@ -253,6 +253,31 @@ async function cmdMemory() {
   log((r.data && r.data.content) || '（空）');
 }
 
+async function cmdMemoryAppend() {
+  const cfg = await requireConfig();
+  if (!cfg) return;
+  const text = await vscode.window.showInputBox({
+    prompt: '追加记忆内容（总结本阶段进展、决策或成果）',
+    placeHolder: '例如：完成用户中心 REST 接口并联调通过',
+    ignoreFocusOut: true,
+  });
+  if (!text || !text.trim()) return;
+
+  const r = await api(cfg, 'POST', '/memory/append', { content: text.trim() });
+  if (!r.ok) {
+    const root = workspaceRoot();
+    if (root) {
+      const cr = await runCli(['memory', 'append', text.trim()], root);
+      if (cr.ok) {
+        vscode.window.showInformationMessage('已追加记忆！');
+        return;
+      }
+    }
+    return showError('追加记忆失败: ' + (r.data && r.data.error ? r.data.error.message : r.status));
+  }
+  vscode.window.showInformationMessage(`已追加记忆 → v${(r.data && r.data.version) || '新版本'}`);
+}
+
 async function cmdAgents() {
   const r = await api({ url: '' }, 'GET', '/agents');
   if (!r.ok) return showError('获取平台目录失败');
@@ -378,6 +403,7 @@ function activate(context) {
   register('a2a.sync', cmdSync);
   register('a2a.tasks', cmdTasks);
   register('a2a.memory', cmdMemory);
+  register('a2a.memoryAppend', cmdMemoryAppend);
   register('a2a.agents', cmdAgents);
   register('a2a.dashboard', cmdDashboard);
   register('a2a.refresh', refreshAll);

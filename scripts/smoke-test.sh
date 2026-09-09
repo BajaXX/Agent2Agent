@@ -90,6 +90,11 @@ chk "初始 version=0" "0" "$(curl -s $B/memory -H "Authorization: Bearer $TA" |
 chk "PUT v1" "1" "$(curl -s -X PUT $B/memory -H "Authorization: Bearer $TA" -H 'Content-Type: application/json' -d '{"content":"# A 项目记忆","version":0}' | python3 -c "import sys,json;print(json.load(sys.stdin)['version'])")"
 chk "旧版本 409" "409" "$(curl -s -o /dev/null -w "%{http_code}" -X PUT $B/memory -H "Authorization: Bearer $TA" -H 'Content-Type: application/json' -d '{"content":"x","version":0}')"
 chk "版本历史=1" "1" "$(curl -s "$B/memory/versions?account=project-A" | python3 -c "import sys,json;print(len(json.load(sys.stdin)))")"
+APP_RES=$(curl -s -X POST $B/memory/append -H "Authorization: Bearer $TA" -H 'Content-Type: application/json' -d '{"content":"完成用户中心接口联调"}')
+chk "POST append 返回 v2" "2" "$(echo "$APP_RES" | python3 -c "import sys,json;print(json.load(sys.stdin)['version'])")"
+chk "GET memory 包含追加内容" "1" "$(curl -s $B/memory -H "Authorization: Bearer $TA" | python3 -c "import sys,json;print(1 if '完成用户中心接口联调' in json.load(sys.stdin)['content'] else 0)")"
+chk "POST append 空内容 400" "400" "$(curl -s -o /dev/null -w "%{http_code}" -X POST $B/memory/append -H "Authorization: Bearer $TA" -H 'Content-Type: application/json' -d '{"content":""}')"
+chk "版本历史=2" "2" "$(curl -s "$B/memory/versions?account=project-A" | python3 -c "import sys,json;print(len(json.load(sys.stdin)))")"
 
 echo "== 8. checkin =="
 CI=$(curl -s "$B/checkin?since=0" -H "Authorization: Bearer $TB")
@@ -109,7 +114,11 @@ ID2=$(curl -s -X POST $B/tasks -H "Authorization: Bearer $TB" -H 'Content-Type: 
 chk "幂等键同 taskId" "$(echo "$ID1" | python3 -c "import sys,json;print(json.load(sys.stdin)['taskId'])")" "$(echo "$ID2" | python3 -c "import sys,json;print(json.load(sys.stdin)['taskId'])")"
 
 echo "== 11. SSE 广播 =="
-timeout 4 curl -sN "$B/events" > /tmp/sse.out & SSERPID=$!
+if command -v timeout >/dev/null 2>&1; then
+  timeout 4 curl -sN "$B/events" > /tmp/sse.out & SSERPID=$!
+else
+  curl -sN "$B/events" > /tmp/sse.out & SSERPID=$!
+fi
 sleep 0.5
 curl -s -X POST $B/messages -H "Authorization: Bearer $TA" -H 'Content-Type: application/json' -d '{"to":"sync-C","subject":"SSE 测试","body":"hi"}' > /dev/null
 sleep 1

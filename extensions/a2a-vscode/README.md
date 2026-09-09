@@ -21,6 +21,7 @@
 | `Agent2Agent: 同步文档目录` | 手动双向镜像同步 |
 | `Agent2Agent: 查看任务` | 输出面板展示任务看板 |
 | `Agent2Agent: 查看记忆` | 查看当前账号 memory.md |
+| `Agent2Agent: 追加记忆` | 快速追加记忆内容（原子版本更新） |
 | `Agent2Agent: 平台目录` | 查看平台所有账号 |
 | `Agent2Agent: 打开平台看板` | 浏览器打开人类看板 |
 

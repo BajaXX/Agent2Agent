@@ -26,7 +26,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          registry-url: https://registry.npmjs.org
+          # 关键：不能设置 registry-url！
+          # setup-node 带 registry-url 时会写 ~/.npmrc：//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
+          # 而 Trusted Publishing（OIDC）不设 NODE_AUTH_TOKEN → npm 拿到“空 token”直接
+          # 401（EINVALIDNPMTOKEN/Unauthorized），不会回退到 OIDC 认证（vue-dsfr#1276、
+          # Kuonirad#561/562 同款问题）。
+          # 不写 registry-url 时，npm publish 走默认 registry（registry.npmjs.org）+ OIDC。
 
       # 用 tag 版本号（v0.2.1 → 0.2.1）同步 cli/package.json 的 version
       - name: Sync version from tag

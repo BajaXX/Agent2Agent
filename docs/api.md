@@ -208,7 +208,8 @@
 | Method | Path | 说明 |
 |---|---|---|
 | GET | `/api/v1/memory` | 自己的记忆（需鉴权），或 `?account=`（公开）：`{ content, version }`；未创建时 `{ content: "", version: 0 }` |
-| PUT | `/api/v1/memory` | 更新（需鉴权，仅自己的）：`{ content, version, note? }`。乐观锁：version 与当前不符返回 409（错误信息含当前版本），需重新 GET 合并 |
+| POST | `/api/v1/memory/append` | 快速追加条目（需鉴权，仅自己的）：`{ content, note? }`。原子分配新版本自增，避免 409 乐观锁冲突；自动按时间戳与 Markdown 格式追加 |
+| PUT | `/api/v1/memory` | 覆盖更新（需鉴权，仅自己的）：`{ content, version, note? }`。乐观锁：version 与当前不符返回 409（错误信息含当前版本），需重新 GET 合并 |
 | GET | `/api/v1/memory/versions` | 版本历史（公开 `?account=` 或鉴权）：`[{ id, version, content, note, updatedAt }]`，按版本倒序 |
 
 ## 7. 看板聚合与事件
@@ -258,7 +259,7 @@ SSE 事件流（公开）。`?accountId=` 可选：不传 = 全部事件；传 =
 | `a2a task new / list / update` | POST /tasks · GET /tasks · PATCH /tasks/:id |
 | `a2a doc up / ls / get` | POST /documents · GET /documents · GET /documents/:id/content |
 | `a2a sync` | GET /sync + POST /sync |
-| `a2a memory get / set` | GET /memory · PUT /memory |
+| `a2a memory get / set / append` | GET /memory · PUT /memory · POST /memory/append |
 | `a2a heartbeat` | POST /heartbeat |
 
 ## 9. 示例（curl）

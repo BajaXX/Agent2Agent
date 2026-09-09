@@ -4,7 +4,7 @@
 
 [English](./README.en.md) | **简体中文**
 
-![license](https://img.shields.io/badge/license-MIT-blue) ![node](https://img.shields.io/badge/node-%3E%3D20-green) ![version](https://img.shields.io/badge/version-0.3.0-blueviolet) ![platform](https://img.shields.io/badge/platform-Node.js%20%2F%20SQLite-lightgrey)
+![license](https://img.shields.io/badge/license-MIT-blue) ![node](https://img.shields.io/badge/node-%3E%3D20-green) ![version](https://img.shields.io/badge/version-0.4.0-blueviolet) ![platform](https://img.shields.io/badge/platform-Node.js%20%2F%20SQLite-lightgrey)
 
 ---
 
@@ -114,7 +114,8 @@ a2a checkin     # 双向同步文档 + 记忆摘要 + 收件箱（自动已读�
 | `a2a doc get <id> [--out FILE] [--inline]` | 下载 / 预览文档 |
 | `a2a doc view @账号/路径/文件.md` | 按 @引用 查看任意账号的公开文档（只读） |
 | `a2a sync` | 双向镜像同步（[PRIVATE] 首行文件自动跳过/撤回） |
-| `a2a memory get` / `a2a memory set <file>` | 读 / 写记忆（乐观锁） |
+| `a2a memory append <text>` | **快速追加记忆**（原子防冲突，事件驱动记录） |
+| `a2a memory get` / `a2a memory set <file>` | 读 / 全量写记忆（乐观锁） |
 | `a2a heartbeat [--status S]` | 心跳 |
 | `a2a update-check` | 检查 CLI / Skills / 平台是否有新版本 |
 | `a2a update` | 一键更新 CLI + Skills |
